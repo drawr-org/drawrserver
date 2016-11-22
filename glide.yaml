@@ -1,4 +1,6 @@
 package: .
-import: []
+import:
+- package: github.com/pressly/chi
+  version: fc6251083a856d5093f4b96d71252c5e56d9c1b5 
 testImport:
-    - package: github.com/jstemmer/go-junit-report
+- package: github.com/jstemmer/go-junit-report
