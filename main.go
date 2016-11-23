@@ -9,7 +9,9 @@ import (
 	"github.com/pressly/chi"
 )
 
-func main() {
+var s http.Server
+
+func init() {
 	r := chi.NewRouter()
 
 	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
@@ -19,12 +21,15 @@ func main() {
 	// api version 1
 	api.Routing(r)
 
-	s := &http.Server{
+	s = http.Server{
 		Addr:         "localhost:8080",
 		Handler:      r,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
+}
+
+func main() {
 	log.Println("Listening on...", s.Addr)
 	panic(s.ListenAndServe())
 }
