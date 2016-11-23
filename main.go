@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"./api"
+	"github.com/drawr-team/core-server/api"
 	"github.com/pressly/chi"
 )
 

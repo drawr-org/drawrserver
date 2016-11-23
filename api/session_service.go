@@ -7,7 +7,7 @@ import (
 
 	"github.com/pressly/chi"
 
-	"../bolt"
+	"github.com/drawr-team/core-server/bolt"
 )
 
 // SessionService manages the session

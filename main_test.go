@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"./api"
+	"github.com/drawr-team/core-server/api"
 	"github.com/pressly/chi"
 )
 

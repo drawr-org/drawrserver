@@ -6,7 +6,7 @@ import (
 
 	"github.com/pressly/chi"
 
-	"../bolt"
+	"github.com/drawr-team/core-server/bolt"
 )
 
 // UserService manages users in a session
