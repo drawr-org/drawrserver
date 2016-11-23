@@ -1,3 +1,4 @@
-backend
 glide.lock
 vendor/
+
+core-server
