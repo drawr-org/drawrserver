@@ -1,0 +1,14 @@
+[Unit]
+Description=Drawr server
+Documentation=https://github.com/drawr-team/core-server
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+Restart=on-failure
+
+ExecStart=/opt/drawr/core-server -p 8080
+ExecStop=/bin/kill $MAINPID
+
+[Install]
+WantedBy=multi-user.target
