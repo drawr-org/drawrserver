@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/drawr-team/core-server/bolt"
@@ -53,6 +56,17 @@ func init() {
 
 func main() {
 	defer bolt.Close()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+	go func() {
+		for sig := range sigChan {
+			log.Println("received", sig, "...shutting down")
+			bolt.Close()
+			// close listener here
+			os.Exit(0)
+		}
+	}()
 
 	log.Println("Listening on...", s.Addr)
 	panic(s.ListenAndServe())
