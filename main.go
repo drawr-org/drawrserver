@@ -1,35 +1,59 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/drawr-team/core-server/api"
-	"github.com/pressly/chi"
+	"github.com/drawr-team/core-server/bolt"
+	"rbg.re/robertgzr/websock"
 )
 
-var s http.Server
+var (
+	dbClient bolt.Client
+	s        http.Server
+	port     string
+)
 
 func init() {
-	r := chi.NewRouter()
+	flag.StringVar(&port, "p", "8080", "port to run the server on")
+	flag.Parse()
 
-	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("this is the backend of the drawr service"))
+	// initialize the database client and open the connection
+	bolt.NewClient()
+
+	// initialize a new communication hub
+	wsHub := websock.NewHub()
+	go wsHub.Run()
+	go monitor(Hub{wsHub})
+
+	mux := http.NewServeMux()
+	// root route
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("this is the backend of the drawr service\n"))
+		// list handler code here...
+		var ls = wsHub.ListConnections()
+		for _, s := range ls {
+			w.Write([]byte(s + "\n"))
+		}
+		w.Write([]byte(fmt.Sprintf("\nfound %v connections\n", len(ls))))
 	})
-
-	// api version 1
-	api.Routing(r)
+	// websocket route
+	mux.Handle("/ws", websock.Handler{Hub: wsHub})
 
 	s = http.Server{
-		Addr:         "localhost:8080",
-		Handler:      r,
+		Addr:         ":" + port,
+		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 }
 
 func main() {
+	defer bolt.Close()
+
 	log.Println("Listening on...", s.Addr)
 	panic(s.ListenAndServe())
 }
