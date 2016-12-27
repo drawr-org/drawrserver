@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/drawr-team/core-server/message"
-
-	"rbg.re/robertgzr/websock/hub"
+	"github.com/drawr-team/core-server/websock"
 )
 
-// Hub wraps a websock/hub.Hub
+// Hub wraps a websock.Hub
 type Hub struct {
-	*hub.Hub
+	*websock.Hub
 }
 
 // Emit implements the MessageProvider interface

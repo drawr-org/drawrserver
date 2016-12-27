@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/drawr-team/core-server/bolt"
-	"rbg.re/robertgzr/websock"
+	"github.com/drawr-team/core-server/websock"
 )
 
 var (
