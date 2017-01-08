@@ -27,14 +27,15 @@ type JoinSessionAckData struct {
 }
 
 // HandleJoinSession handles a `join-session` type
-func HandleJoinSession(m GenericMessage, p Provider) error {
+func HandleJoinSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 	var data JoinSessionData
 	if err := json.Unmarshal(m.Data, &data); err != nil {
 		return err
 	}
 
 	// TODO: database code here
-	sessionData, err := bolt.Get(bolt.SessionBucket, data.SessionID)
+	// untested !!!
+	sessionData, err := db.Get(bolt.SessionBucket, data.SessionID)
 	if err != nil {
 		// TODO: not like this, please!
 		if err == bolt.ErrNotFound {
@@ -43,6 +44,7 @@ func HandleJoinSession(m GenericMessage, p Provider) error {
 	}
 
 	// TODO: retrieve session data from `session`
+	// untested !!!
 	log.Println(sessionData)
 
 	// create repsonse

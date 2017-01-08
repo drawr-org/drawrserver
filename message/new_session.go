@@ -29,7 +29,7 @@ type NewSessionAckData struct {
 }
 
 // HandleNewSession handles a `new-session` type
-func HandleNewSession(m GenericMessage, p Provider) error {
+func HandleNewSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 	var data NewSessionData
 	if err := json.Unmarshal(m.Data, &data); err != nil {
 		return err
@@ -37,7 +37,7 @@ func HandleNewSession(m GenericMessage, p Provider) error {
 
 	sessionID := ulidgen.Now().String()
 
-	if err := bolt.Put(bolt.SessionBucket, sessionID, data); err != nil {
+	if err := db.Put(bolt.SessionBucket, sessionID, data); err != nil {
 		log.Println(err)
 	}
 	// TODO: session logic here
