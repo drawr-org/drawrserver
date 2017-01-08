@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/drawr-team/core-server/bolt"
 	"github.com/drawr-team/core-server/message"
 	"github.com/drawr-team/core-server/websock"
 )
@@ -26,7 +27,7 @@ func (h Hub) Absorb(message []byte) {
 	h.BroadcastBus <- message
 }
 
-func monitor(provider message.Provider) error {
+func monitor(provider message.Provider, db bolt.DBClient) error {
 	for {
 		msg := provider.Emit()
 		if msg == nil {
@@ -40,15 +41,21 @@ func monitor(provider message.Provider) error {
 			continue
 		}
 
+		log.Printf("[monitor] found a `%v` message", m.Type)
 		switch m.Type {
-		case "new-session":
-			log.Println("[monitor] found a `new-session` message")
-			if err := message.HandleNewSession(m, provider); err != nil {
+		case message.NewSessionMessageType:
+			if err := message.HandleNewSession(m, provider, db); err != nil {
 				return err
 			}
-		case "join-session":
-			log.Println("[monitor] found a `join-session` message")
-			if err := message.HandleJoinSession(m, provider); err != nil {
+		case message.JoinSessionMessageType:
+			if err := message.HandleJoinSession(m, provider, db); err != nil {
+				return err
+			}
+		case "leave-session":
+			log.Println("not yet implemented -.-")
+			// TODO
+		case "update-canvas":
+			if err := message.HandleUpdateCanvas(m, provider, db); err != nil {
 				return err
 			}
 		default:

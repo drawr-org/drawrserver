@@ -1,3 +1,4 @@
+// Package bolt provides a client interface to one bolt database on disk
 package bolt
 
 import (
@@ -9,12 +10,10 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-var c Client
-
 // Client is a client to the bolt DB
 type Client struct {
-	Path string
-	Now  func() time.Time
+	Path    string
+	Timeout time.Duration
 
 	db *bolt.DB
 }
@@ -36,18 +35,14 @@ var (
 )
 
 // NewClient sets up Client
-func NewClient() {
-	c = Client{Path: DBPath, Now: time.Now}
-	if err := Open(); err != nil {
-		panic(err)
-	}
-	log.Println("[bolt] opened database:", c.Path)
+func NewClient() Client {
+	return Client{Path: DBPath, Timeout: 1 * time.Second}
 }
 
 // Open opens the DB
-func Open() error {
+func (c Client) Open() error {
 	// Open the database
-	db, err := bolt.Open(c.Path, 0666, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open(c.Path, 0666, &bolt.Options{Timeout: c.Timeout})
 	if err != nil {
 		return err
 	}
@@ -71,7 +66,7 @@ func Open() error {
 }
 
 // Close closes the DB
-func Close() {
+func (c Client) Close() {
 	if c.db != nil {
 		if err := c.db.Close(); err != nil {
 			panic(err)
@@ -82,7 +77,7 @@ func Close() {
 
 // Get takes a bucket name and a key
 // and returns the value in the DB
-func Get(bucket, key string) ([]byte, error) {
+func (c Client) Get(bucket, key string) ([]byte, error) {
 	// Open a read-only connection
 	tx, err := c.db.Begin(false)
 	if err != nil {
@@ -110,7 +105,7 @@ func Get(bucket, key string) ([]byte, error) {
 
 // Put takes a bucket name, a key and a value
 // It stores the value in the bucket
-func Put(bucket, key string, value interface{}) error {
+func (c Client) Put(bucket, key string, value interface{}) error {
 	// Open a write connection
 	tx, err := c.db.Begin(true)
 	if err != nil {
