@@ -9,12 +9,10 @@ import (
 )
 
 const (
-	NewSessionMessageType        = "new-session"
-	NewSessionAckType            = "ack-session"
-	NewSessionDataStatusSuccess  = "new-session-success"
-	NewSessionDataStatusFailure  = "new-session-failure"
-	NewSessionDataMessageSuccess = "Session successfully created."
-	NewSessionDataMessageFailure = "Session could not be created."
+	NewSessionMessageType       = "new-session"
+	NewSessionAckType           = "ack-session"
+	NewSessionDataStatusSuccess = "new-session-success"
+	NewSessionDataStatusFailure = "new-session-failure"
 )
 
 // NewSessionData is the data used to initialize a new Session
@@ -35,21 +33,33 @@ func HandleNewSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 		return err
 	}
 
+	// generate new session id
 	sessionID := ulidgen.Now().String()
 
-	if err := db.Put(bolt.SessionBucket, sessionID, data); err != nil {
-		log.Println(err)
-	}
-	// TODO: session logic here
+	// create database entry for new session
+	db.Put(bolt.SessionBucket, sessionID, m.Data)
 
-	// create repsonse
-	resp, err := CreateMessage(NewSessionAckType, GenericAck{
-		Status:  NewSessionDataStatusSuccess,
-		Message: NewSessionDataMessageSuccess,
-		Data:    NewSessionAckData{SessionID: sessionID},
-	})
-	if err != nil {
-		return err
+	// message to clients
+	var resp *GenericMessage
+	if err := db.Put(bolt.SessionBucket, sessionID, data); err != nil {
+		if err == bolt.ErrExists {
+			// create fail response
+			if resp, err = CreateMessage(NewSessionAckType, GenericAck{
+				Status: NewSessionDataStatusFailure,
+				Data:   NewSessionAckData{SessionID: sessionID},
+			}); err != nil {
+				return err
+			}
+		}
+		log.Println(err)
+	} else {
+		// create success repsonse
+		if resp, err = CreateMessage(NewSessionAckType, GenericAck{
+			Status: NewSessionDataStatusSuccess,
+			Data:   NewSessionAckData{SessionID: sessionID},
+		}); err != nil {
+			return err
+		}
 	}
 
 	message, err := json.Marshal(resp)
@@ -57,7 +67,7 @@ func HandleNewSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 		return err
 	}
 
-	p.Absorb(message)
+	p.AbsorbTo(sessionID, message)
 
 	return nil
 }

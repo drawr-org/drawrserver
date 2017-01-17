@@ -8,73 +8,96 @@ import (
 
 // Hub keeps track of all connections
 type Hub struct {
-	// MessageBus is for incoming messages
+	// IncomingBus is for incoming messages
 	IncomingBus chan []byte
-	// Broadcast is for outgoing messages
+	// BroadcastBus is for outgoing messages
 	BroadcastBus chan []byte
 	// Timeout in seconds
 	Timeout int64
+	Verbose bool
 
-	// connections is a list of registered connections
-	// we have to track and sync
-	connections map[Connection]struct{}
-
+	Pools map[string]Pool
 	// protect parallel handling of connections
 	connectionsMx sync.RWMutex
+	poolsMx       sync.RWMutex
 }
 
 // NewHub creates a new hub
 func NewHub() *Hub {
 	return &Hub{
-		connections:   make(map[Connection]struct{}),
-		connectionsMx: sync.RWMutex{},
 		BroadcastBus:  make(chan []byte),
 		IncomingBus:   make(chan []byte),
 		Timeout:       1,
+		Pools:         make(map[string]Pool),
+		connectionsMx: sync.RWMutex{},
+		poolsMx:       sync.RWMutex{},
 	}
 }
 
-// Run starts monitoring on the hub.
-// Run this as a goroutine
+// Run starts monitoring on the hub
+// in a goroutine
 func (h *Hub) Run() {
 	for {
-		broadcastMessage := <-h.BroadcastBus
-		h.connectionsMx.RLock()
+		for id, p := range h.Pools {
+			broadcastMessage := <-p.BroadcastBus
+			h.connectionsMx.RLock()
 
-		for c := range h.connections {
-			select {
-			case c.SendChan() <- broadcastMessage:
+			for c := range p.connections {
+				select {
+				case c.SendChan() <- broadcastMessage:
 
-			// close connection after no response for Timeout
-			case <-time.After(time.Duration(h.Timeout) * time.Second):
-				log.Println("[hub] closing connection:", c)
-				h.RemoveConnection(c)
+				// close connection after no response for Timeout
+				case <-time.After(time.Duration(h.Timeout) * time.Second):
+					if h.Verbose {
+						log.Println("[hub] closing connection:", c)
+					}
+					h.RemoveConnection(id, c)
+				}
 			}
-		}
 
-		h.connectionsMx.RUnlock()
+			h.connectionsMx.RUnlock()
+		}
 	}
 }
 
 // AddConnection remembers a connection
-func (h *Hub) AddConnection(c Connection) {
+func (h *Hub) AddConnection(id string, c Connection) {
+	h.poolsMx.Lock()
+	defer h.poolsMx.Unlock()
+	// if we don't have a pool with id already
+	// create one...
+	if h.Pools[id].ID != id {
+		h.AddPool(id)
+	}
+
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
-	log.Println("[hub] new connection:", c)
+	if h.Verbose {
+		log.Println("[hub] new connection:", c)
+	}
 
-	h.connections[c] = struct{}{}
+	h.Pools[id].connections[c] = struct{}{}
 }
 
 // RemoveConnection forgets a connection
-func (h *Hub) RemoveConnection(c Connection) {
+func (h *Hub) RemoveConnection(id string, c Connection) {
+	h.poolsMx.Lock()
+	defer h.poolsMx.Unlock()
+
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
-	log.Println("[hub] remove connection:", c)
+	if h.Verbose {
+		log.Println("[hub] remove connection:", c)
+	}
 
-	if _, ok := h.connections[c]; ok {
-		delete(h.connections, c)
+	if _, ok := h.Pools[id].connections[c]; ok {
+		delete(h.Pools[id].connections, c)
 		close(c.SendChan())
+	}
+
+	if len(h.Pools[id].connections) < 1 {
+		delete(h.Pools, id)
 	}
 }

@@ -8,12 +8,10 @@ import (
 )
 
 const (
-	JoinSessionMessageType        = "join-session"
-	JoinSessionAckType            = "ack-session"
-	JoinSessionDataStatusSuccess  = "join-session-success"
-	JoinSessionDataStatusFailure  = "join-session-failure"
-	JoinSessionDataMessageSuccess = "Session successfully joined."
-	JoinSessionDataMessageFailure = "Session could not be joined."
+	JoinSessionMessageType       = "join-session"
+	JoinSessionAckType           = "ack-session"
+	JoinSessionDataStatusSuccess = "join-session-success"
+	JoinSessionDataStatusFailure = "join-session-failure"
 )
 
 // JoinSessionData is the data used to initialize a new Session
@@ -43,15 +41,12 @@ func HandleJoinSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 		}
 	}
 
-	// TODO: retrieve session data from `session`
-	// untested !!!
 	log.Println(sessionData)
 
 	// create repsonse
 	resp, err := CreateMessage(JoinSessionAckType, GenericAck{
-		Status:  JoinSessionDataStatusSuccess,
-		Message: JoinSessionDataMessageSuccess,
-		Data:    nil,
+		Status: JoinSessionDataStatusSuccess,
+		Data:   nil,
 	})
 	if err != nil {
 		return err
@@ -62,7 +57,7 @@ func HandleJoinSession(m GenericMessage, p Provider, db bolt.DBClient) error {
 		return err
 	}
 
-	p.Absorb(message)
+	p.AbsorbTo(data.SessionID, message)
 
 	return nil
 }

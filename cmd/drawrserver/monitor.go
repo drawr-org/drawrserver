@@ -10,21 +10,27 @@ import (
 	"github.com/drawr-team/core-server/websock"
 )
 
-// Hub wraps a websock.Hub
-type Hub struct {
+// HubProvider wraps a websock.Hub
+type HubProvider struct {
 	*websock.Hub
 }
 
 // Emit implements the MessageProvider interface
 // returns a message out of the IncomingBus
-func (h Hub) Emit() []byte {
+func (h HubProvider) Emit() []byte {
 	return <-h.IncomingBus
 }
 
 // Absorb implements the Absorber interface
 // pushes a message into the BroadcastBus
-func (h Hub) Absorb(message []byte) {
+func (h HubProvider) Absorb(message []byte) {
 	h.BroadcastBus <- message
+}
+
+// AbsorbTo implements the Absorber interface
+// pushes a message into the BroadcastBus of the session pool
+func (h HubProvider) AbsorbTo(sessionID string, message []byte) {
+	h.Pools[sessionID].BroadcastBus <- message
 }
 
 func monitor(provider message.Provider, db bolt.DBClient) error {
@@ -34,14 +40,15 @@ func monitor(provider message.Provider, db bolt.DBClient) error {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-
 		var m message.GenericMessage
 		if err := json.Unmarshal(msg, &m); err != nil {
 			log.Println(err)
 			continue
 		}
 
-		log.Printf("[monitor] found a `%v` message", m.Type)
+		if verbose {
+			log.Printf("[monitor] found a `%v` message", m.Type)
+		}
 		switch m.Type {
 		case message.NewSessionMessageType:
 			if err := message.HandleNewSession(m, provider, db); err != nil {
@@ -54,7 +61,7 @@ func monitor(provider message.Provider, db bolt.DBClient) error {
 		case "leave-session":
 			log.Println("not yet implemented -.-")
 			// TODO
-		case "update-canvas":
+		case message.UpdateCanvasMessageType:
 			if err := message.HandleUpdateCanvas(m, provider, db); err != nil {
 				return err
 			}

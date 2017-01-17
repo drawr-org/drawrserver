@@ -38,11 +38,16 @@ func HandleUpdateCanvas(m GenericMessage, p Provider, db bolt.DBClient) error {
 	// TODO:
 	// save canvas state in DB
 
-	resp, err := json.Marshal(data)
+	msg, err := CreateMessage(UpdateCanvasMessageType, data)
 	if err != nil {
 		return err
 	}
 
-	p.Absorb(resp)
+	resp, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	p.AbsorbTo(data.SessionID, resp)
 	return nil
 }

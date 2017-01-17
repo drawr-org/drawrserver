@@ -4,19 +4,12 @@ package bolt
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
 )
-
-// Client is a client to the bolt DB
-type Client struct {
-	Path    string
-	Timeout time.Duration
-
-	db *bolt.DB
-}
 
 const (
 	// DBPath is the location of the bolt DB
@@ -34,13 +27,24 @@ var (
 	ErrNotFound = errors.New("key not found")
 )
 
+// Client is a client to the bolt DB
+type Client struct {
+	Path        string
+	Timeout     time.Duration
+	dataBuckets [][]byte
+
+	Verbose bool
+
+	db *bolt.DB
+}
+
 // NewClient sets up Client
-func NewClient() Client {
-	return Client{Path: DBPath, Timeout: 1 * time.Second}
+func NewClient() *Client {
+	return &Client{Path: DBPath, Timeout: 1 * time.Second}
 }
 
 // Open opens the DB
-func (c Client) Open() error {
+func (c *Client) Open() error {
 	// Open the database
 	db, err := bolt.Open(c.Path, 0666, &bolt.Options{Timeout: c.Timeout})
 	if err != nil {
@@ -62,22 +66,28 @@ func (c Client) Open() error {
 		return err
 	}
 
+	if c.Verbose {
+		log.Println("[bolt] opened database at", c.Path)
+	}
+
 	return tx.Commit()
 }
 
 // Close closes the DB
-func (c Client) Close() {
+func (c *Client) Close() {
 	if c.db != nil {
 		if err := c.db.Close(); err != nil {
 			panic(err)
 		}
 	}
-	log.Println("[bolt] closed database:", c.Path)
+	if c.Verbose {
+		log.Println("[bolt] closed database:", c.Path)
+	}
 }
 
 // Get takes a bucket name and a key
 // and returns the value in the DB
-func (c Client) Get(bucket, key string) ([]byte, error) {
+func (c *Client) Get(bucket, key string) ([]byte, error) {
 	// Open a read-only connection
 	tx, err := c.db.Begin(false)
 	if err != nil {
@@ -85,9 +95,13 @@ func (c Client) Get(bucket, key string) ([]byte, error) {
 	}
 	defer tx.Rollback()
 
-	b, err := tx.CreateBucketIfNotExists([]byte(bucket))
+	b := tx.Bucket([]byte(bucket))
 	if err != nil {
 		return nil, err
+	}
+
+	if c.Verbose {
+		log.Printf("[bolt] get from: %v::%v\n", bucket, key)
 	}
 
 	data := b.Get([]byte(key))
@@ -96,16 +110,16 @@ func (c Client) Get(bucket, key string) ([]byte, error) {
 		return nil, ErrNotFound
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
 	return data, nil
 }
 
 // Put takes a bucket name, a key and a value
 // It stores the value in the bucket
-func (c Client) Put(bucket, key string, value interface{}) error {
+func (c *Client) Put(bucket, key string, value interface{}) error {
+	if c.db.IsReadOnly() {
+		return fmt.Errorf("[bolt] db is readonly")
+	}
+
 	// Open a write connection
 	tx, err := c.db.Begin(true)
 	if err != nil {
@@ -113,9 +127,18 @@ func (c Client) Put(bucket, key string, value interface{}) error {
 	}
 	defer tx.Rollback()
 
-	b, err := tx.CreateBucketIfNotExists([]byte(bucket))
+	// b, err := tx.CreateBucketIfNotExists([]byte(bucket))
+	b, err := tx.CreateBucket([]byte(bucket))
 	if err != nil {
-		return err
+		if err != bolt.ErrBucketExists {
+			return err
+		}
+		b = tx.Bucket([]byte(bucket))
+	}
+	c.dataBuckets = append(c.dataBuckets, []byte(bucket))
+
+	if c.Verbose {
+		log.Printf("[bolt] put to: %v::%v\n", bucket, key)
 	}
 
 	data, err := json.Marshal(value)
@@ -126,7 +149,12 @@ func (c Client) Put(bucket, key string, value interface{}) error {
 	if err := b.Put([]byte(key), data); err != nil {
 		return err
 	}
-	log.Println("[bolt] stored at key:", key)
 
 	return tx.Commit()
+}
+
+// Stats returns useful information about the database
+func (c *Client) Stats() string {
+	txNum := c.db.Stats().TxN
+	return fmt.Sprintf("tx_num: %v\n", txNum)
 }

@@ -10,9 +10,8 @@ type GenericMessage struct {
 
 // GenericAck is ...
 type GenericAck struct {
-	Status  string      `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Status string      `json:"status"`
+	Data   interface{} `json:"data"`
 }
 
 // CreateMessage takes a message type and an interface

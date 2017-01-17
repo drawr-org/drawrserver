@@ -44,7 +44,9 @@ func (c *Connection) Reader(wg *sync.WaitGroup, ws *websocket.Conn) {
 
 	for {
 		_, message, err := ws.ReadMessage()
-		log.Println("[hub] received:", string(message))
+		if c.Hub.Verbose {
+			log.Println("[hub] received:", string(message))
+		}
 		if err != nil {
 			// TODO
 			log.Println(err)
@@ -66,6 +68,8 @@ func (c *Connection) Writer(wg *sync.WaitGroup, ws *websocket.Conn) {
 			log.Println(err)
 			break
 		}
-		log.Println("[hub] sent:", string(message))
+		if c.Hub.Verbose {
+			log.Println("[hub] sent:", string(message))
+		}
 	}
 }
