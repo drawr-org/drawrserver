@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/drawr-team/core-server/bolt"
-	"github.com/drawr-team/core-server/websock"
+	"github.com/pressly/chi"
 )
 
 const version = "0.1.0"
@@ -23,6 +23,7 @@ var (
 	dbTimeout int
 	verbose   bool
 	server    http.Server
+	wsHubs    = make(map[string]*HubProvider)
 )
 
 func init() {
@@ -41,11 +42,12 @@ func init() {
 
 	initDatabase()
 	// initSocketHub()
-	handle := initHandlers()
+
+	router := initRouter()
 
 	server = http.Server{
 		Addr:         ":" + port,
-		Handler:      handle,
+		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -89,18 +91,8 @@ func initDatabase() {
 
 }
 
-func initSocketHub() {
-	// initialize a new communication hub
-	wsHub := websock.NewHub()
-	wsHub.Verbose = verbose
-
-	go wsHub.Run()
-	go monitor(HubProvider{wsHub}, dbClient)
-
-}
-
-func initHandlers() *http.ServeMux {
-	mux := http.NewServeMux()
+func initRouter() chi.Router {
+	r := chi.NewRouter()
 	// route: statistics about the websocket connections
 	// mux.HandleFunc("/stats", func(w http.ResponseWriter, req *http.Request) {
 	// 	w.Write([]byte("this is the backend of the drawr service\n"))
@@ -112,20 +104,21 @@ func initHandlers() *http.ServeMux {
 
 	// 	w.Write([]byte(fmt.Sprintf("\nfound %v connections\n", len(ls))))
 	// })
+
 	// route: validate a session id
-	mux.HandleFunc("/validate", ValidateHandler)
+	// r.Get("/validate", ValidateHandler)
+
 	// route: easteregg
-	mux.HandleFunc("/teapot", func(w http.ResponseWriter, req *http.Request) {
+	r.Get("/teapot", func(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
 		return
 	})
 
 	// route: sessions
-	sessionHandler := SessionHandler{}
-	mux.Handle("/session/", sessionHandler.MiddlewareHandler(sessionHandler))
+	r.Mount("/session", sessionRouter())
 
 	// route: web client
-	mux.HandleFunc("/", WebClientHandler)
+	r.Get("/", WebClientHandler)
 
-	return mux
+	return r
 }

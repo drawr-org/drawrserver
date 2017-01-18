@@ -35,8 +35,8 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: review this. there might be a better way to do this
 
 	c := NewConnection(h.Hub, wsConn)
-	c.Hub.AddConnection("__root", c)
-	defer c.Hub.RemoveConnection("__root", c)
+	c.Hub.AddConnection(c)
+	defer c.Hub.RemoveConnection(c)
 
 	var wg sync.WaitGroup
 	wg.Add(2)

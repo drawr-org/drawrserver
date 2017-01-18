@@ -48,6 +48,6 @@ func HandleUpdateCanvas(m GenericMessage, p Provider, db bolt.DBClient) error {
 		return err
 	}
 
-	p.AbsorbTo(data.SessionID, resp)
+	p.Absorb(resp)
 	return nil
 }

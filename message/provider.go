@@ -14,5 +14,4 @@ type Emitter interface {
 // Absorber can accept []byte data
 type Absorber interface {
 	Absorb([]byte)
-	AbsorbTo(string, []byte)
 }

@@ -1,6 +1,7 @@
 package ulidgen
 
 import (
+	"io"
 	"math/rand"
 	"time"
 
@@ -26,4 +27,16 @@ func New(t time.Time) GeneratedULID {
 func Now() GeneratedULID {
 	t := time.Now()
 	return New(t)
+}
+
+// GeneratorTime returns the arguemnts for a ulid.New() call based on t
+func GeneratorTime(t time.Time) (uint64, io.Reader) {
+	return ulid.Timestamp(t), rand.New(rand.NewSource(t.UnixNano()))
+}
+
+// GeneratorNow returns the arguemnts for a ulid.New() call based on time.Now()
+func GeneratorNow() (uint64, io.Reader) {
+	t := time.Now()
+	return GeneratorTime(t)
+
 }

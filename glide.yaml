@@ -1,6 +1,7 @@
 package: github.com/drawr-team/core-server
 import:
 - package: github.com/gorilla/websocket
-- package: github.com/boltdb/bolt
-- package: github.com/oklog/ulid
 - package: golang.org/x/sys
+- package: github.com/boltdb/bolt
+- package: github.com/pressly/chi
+- package: github.com/oklog/ulid

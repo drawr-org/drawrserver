@@ -16,10 +16,11 @@ type Hub struct {
 	Timeout int64
 	Verbose bool
 
-	Pools map[string]Pool
+	// connections is a list of registered connections
+	// we have to track and sync
+	connections map[Connection]struct{}
 	// protect parallel handling of connections
 	connectionsMx sync.RWMutex
-	poolsMx       sync.RWMutex
 }
 
 // NewHub creates a new hub
@@ -28,9 +29,8 @@ func NewHub() *Hub {
 		BroadcastBus:  make(chan []byte),
 		IncomingBus:   make(chan []byte),
 		Timeout:       1,
-		Pools:         make(map[string]Pool),
+		connections:   make(map[Connection]struct{}),
 		connectionsMx: sync.RWMutex{},
-		poolsMx:       sync.RWMutex{},
 	}
 }
 
@@ -38,38 +38,28 @@ func NewHub() *Hub {
 // in a goroutine
 func (h *Hub) Run() {
 	for {
-		for id, p := range h.Pools {
-			broadcastMessage := <-p.BroadcastBus
-			h.connectionsMx.RLock()
+		broadcastMessage := <-h.BroadcastBus
+		h.connectionsMx.RLock()
 
-			for c := range p.connections {
-				select {
-				case c.SendChan() <- broadcastMessage:
+		for c := range h.connections {
+			select {
+			case c.SendChan() <- broadcastMessage:
 
-				// close connection after no response for Timeout
-				case <-time.After(time.Duration(h.Timeout) * time.Second):
-					if h.Verbose {
-						log.Println("[hub] closing connection:", c)
-					}
-					h.RemoveConnection(id, c)
+			// close connection after no response for Timeout
+			case <-time.After(time.Duration(h.Timeout) * time.Second):
+				if h.Verbose {
+					log.Println("[hub] closing connection:", c)
 				}
+				h.RemoveConnection(c)
 			}
-
-			h.connectionsMx.RUnlock()
 		}
+
+		h.connectionsMx.RUnlock()
 	}
 }
 
 // AddConnection remembers a connection
-func (h *Hub) AddConnection(id string, c Connection) {
-	h.poolsMx.Lock()
-	defer h.poolsMx.Unlock()
-	// if we don't have a pool with id already
-	// create one...
-	if h.Pools[id].ID != id {
-		h.AddPool(id)
-	}
-
+func (h *Hub) AddConnection(c Connection) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
@@ -77,14 +67,11 @@ func (h *Hub) AddConnection(id string, c Connection) {
 		log.Println("[hub] new connection:", c)
 	}
 
-	h.Pools[id].connections[c] = struct{}{}
+	h.connections[c] = struct{}{}
 }
 
 // RemoveConnection forgets a connection
-func (h *Hub) RemoveConnection(id string, c Connection) {
-	h.poolsMx.Lock()
-	defer h.poolsMx.Unlock()
-
+func (h *Hub) RemoveConnection(c Connection) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
@@ -92,12 +79,8 @@ func (h *Hub) RemoveConnection(id string, c Connection) {
 		log.Println("[hub] remove connection:", c)
 	}
 
-	if _, ok := h.Pools[id].connections[c]; ok {
-		delete(h.Pools[id].connections, c)
+	if _, ok := h.connections[c]; ok {
+		delete(h.connections, c)
 		close(c.SendChan())
-	}
-
-	if len(h.Pools[id].connections) < 1 {
-		delete(h.Pools, id)
 	}
 }

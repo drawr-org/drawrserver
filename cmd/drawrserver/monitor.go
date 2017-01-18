@@ -12,25 +12,19 @@ import (
 
 // HubProvider wraps a websock.Hub
 type HubProvider struct {
-	*websock.Hub
+	hub *websock.Hub
 }
 
 // Emit implements the MessageProvider interface
 // returns a message out of the IncomingBus
 func (h HubProvider) Emit() []byte {
-	return <-h.IncomingBus
+	return <-h.hub.IncomingBus
 }
 
 // Absorb implements the Absorber interface
 // pushes a message into the BroadcastBus
 func (h HubProvider) Absorb(message []byte) {
-	h.BroadcastBus <- message
-}
-
-// AbsorbTo implements the Absorber interface
-// pushes a message into the BroadcastBus of the session pool
-func (h HubProvider) AbsorbTo(sessionID string, message []byte) {
-	h.Pools[sessionID].BroadcastBus <- message
+	h.hub.BroadcastBus <- message
 }
 
 func monitor(provider message.Provider, db bolt.DBClient) error {
@@ -50,14 +44,14 @@ func monitor(provider message.Provider, db bolt.DBClient) error {
 			log.Printf("[monitor] found a `%v` message", m.Type)
 		}
 		switch m.Type {
-		case message.NewSessionMessageType:
-			if err := message.HandleNewSession(m, provider, db); err != nil {
-				return err
-			}
-		case message.JoinSessionMessageType:
-			if err := message.HandleJoinSession(m, provider, db); err != nil {
-				return err
-			}
+		// case message.NewSessionMessageType:
+		// 	if err := message.HandleNewSession(m, provider, db); err != nil {
+		// 		return err
+		// 	}
+		// case message.JoinSessionMessageType:
+		// 	if err := message.HandleJoinSession(m, provider, db); err != nil {
+		// 		return err
+		// 	}
 		case "leave-session":
 			log.Println("not yet implemented -.-")
 			// TODO
