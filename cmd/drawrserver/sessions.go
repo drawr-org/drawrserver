@@ -65,6 +65,13 @@ func newSession(w http.ResponseWriter, r *http.Request) {
 func SessionCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "sessionID")
+
+		// __test__ is for testing purposes
+		if id == "__test__" {
+			http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
+			return
+		}
+
 		if b, err := dbClient.Get(bolt.SessionBucket, id); err != nil {
 			if err == bolt.ErrNotFound {
 				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
