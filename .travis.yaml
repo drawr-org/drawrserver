@@ -1,20 +1,18 @@
 language: go
-install: true
 go:
-    - 1.7.4
+    - 1.7
     - tip
 env:
     global:
         - GOARCH=amd64
-before_install:
+install:
     - go get -v github.com/Masterminds/glide
     - cd $GOAPTH/github.com/Masterminds/glide && git checkout v0.12.3
-install:
     - glide install
 script:
     - go test -v ./bolt
-# after_success:
-#     - test -n "$TRAVIS_TAG" && curl -s https://raw.githubusercontent.com/goreleaser/get/master/latest | bash
+notifications:
+    email: false
 matrix:
     allow_failures:
         - go: tip
