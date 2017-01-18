@@ -4,4 +4,13 @@
 
 The backend to the drawr service
 
-_TODO: add documentation_
+# API
+
+## GET: `/session/new`
+Request a new session
+
+## GET: `/session/[session-id]`
+Get session information  
+
+## ws:// `/session/[session-id]/ws`
+Connect to a session websocket
