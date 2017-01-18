@@ -7,7 +7,7 @@ env:
         - GOARCH=amd64
 install:
     - go get -v github.com/Masterminds/glide
-    - cd $GOAPTH/github.com/Masterminds/glide && git checkout v0.12.3
+    - cd $GOPATH/src/github.com/Masterminds/glide && git checkout v0.12.3
     - glide install
 script:
     - go test -v ./bolt
