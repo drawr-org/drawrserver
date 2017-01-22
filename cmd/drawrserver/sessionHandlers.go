@@ -87,6 +87,7 @@ func leaveSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+	log.Println("remove user", r.Host, "from session:", session.ID)
 
 	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	return

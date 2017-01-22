@@ -1,18 +1,23 @@
 package bolt
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 var c *Client
 
 func TestClient(t *testing.T) {
 	c = NewClient()
 	c.Open()
-	defer c.Close()
 
 	t.Run("PutSession", testPutSession)
 	t.Run("PutUser", testPutUser)
 	t.Run("GetSession", testGetSession)
 	t.Run("GetUser", testGetUser)
+
+	c.Close()
+	os.Remove(c.Path)
 }
 
 func testPutSession(t *testing.T) {
