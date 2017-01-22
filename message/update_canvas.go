@@ -2,6 +2,7 @@ package message
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/drawr-team/core-server/bolt"
@@ -38,7 +39,7 @@ func HandleUpdateCanvas(m GenericMessage, p Provider, db bolt.DBClient) error {
 	// TODO:
 	// save canvas state in DB
 
-	msg, err := CreateMessage(UpdateCanvasMessageType, data)
+	msg, err := NewMessage(UpdateCanvasMessageType, data)
 	if err != nil {
 		return err
 	}
@@ -46,6 +47,13 @@ func HandleUpdateCanvas(m GenericMessage, p Provider, db bolt.DBClient) error {
 	resp, err := json.Marshal(msg)
 	if err != nil {
 		return err
+	}
+
+	// log
+	if p.GetVerbose() {
+		// TODO where do we get the session id from?
+		// this runs in session seperated hubs already
+		log.Printf("[message] session: %v, user: %v\n", data.SessionID, data.Username)
 	}
 
 	p.Absorb(resp)

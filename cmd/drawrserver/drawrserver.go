@@ -1,6 +1,16 @@
 package main
 
-import "log"
+import (
+	"log"
+	"net/http"
+
+	"github.com/drawr-team/core-server/bolt"
+)
+
+var (
+	dbClient bolt.DBClient
+	server   http.Server
+)
 
 func main() {
 	defer dbClient.Close()

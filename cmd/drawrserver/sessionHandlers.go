@@ -55,6 +55,9 @@ func newSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if verbose {
+		log.Println("[server] create new session", uid)
+	}
 	w.Header().Set("Status", http.StatusText(http.StatusOK))
 	w.Write(b)
 }
@@ -75,6 +78,9 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if verbose {
+		log.Println("[server] get session", session.ID)
+	}
 	w.Header().Set("Status", http.StatusText(http.StatusOK))
 	w.Write(b)
 }
@@ -87,8 +93,10 @@ func leaveSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Println("remove user", r.Host, "from session:", session.ID)
 
+	if verbose {
+		log.Printf("[server] remove user %v from session %v\n", r.Host, session.ID)
+	}
 	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 	return
 }

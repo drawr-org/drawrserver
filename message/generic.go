@@ -14,9 +14,9 @@ type GenericAck struct {
 	Data   interface{} `json:"data"`
 }
 
-// CreateMessage takes a message type and an interface
+// NewMessage takes a message type and an interface
 // It generates a GenericMessage type
-func CreateMessage(messageType string, data interface{}) (*GenericMessage, error) {
+func NewMessage(messageType string, data interface{}) (*GenericMessage, error) {
 	var m = &GenericMessage{
 		Type: messageType,
 		Data: nil,

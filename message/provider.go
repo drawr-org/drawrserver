@@ -4,6 +4,13 @@ package message
 type Provider interface {
 	Emitter
 	Absorber
+	Verbosity
+}
+
+// Verbosity implements methods to set verbose logs
+type Verbosity interface {
+	SetVerbose(bool)
+	GetVerbose() bool
 }
 
 // Emitter can emit []byte data

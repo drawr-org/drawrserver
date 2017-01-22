@@ -19,13 +19,22 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 	if wsHubs[session.ID] == nil {
 		// initialize a new communication hub
 		wsHub := websock.NewHub()
-		wsHub.Verbose = verbose
+		wsHub.Verbose = debug
 		provHub := HubProvider{hub: wsHub}
+		provHub.verbose = verbose
 		wsHubs[session.ID] = &provHub
+
+		if verbose {
+			log.Println("[server] open new hub")
+		}
 	}
 
 	go wsHubs[session.ID].hub.Run()
 	go monitor(wsHubs[session.ID], dbClient)
 	wsHandler := websock.Handler{Hub: wsHubs[session.ID].hub}
+
+	if verbose {
+		log.Println("[server] join hub")
+	}
 	wsHandler.ServeHTTP(w, r)
 }
