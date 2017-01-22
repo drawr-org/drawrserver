@@ -34,7 +34,7 @@ func init() {
 	flag.Parse()
 
 	if *printVersion {
-		fmt.Printf("drawr server v%v\nfrom github.com/drawr-team/core-server\ncompiled at <%s>\n", version, time.Now().Format(time.ANSIC))
+		fmt.Print(version)
 		os.Exit(0)
 	}
 

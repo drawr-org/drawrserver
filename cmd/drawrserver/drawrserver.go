@@ -2,8 +2,6 @@ package main
 
 import "log"
 
-const version = "0.2.1"
-
 func main() {
 	defer dbClient.Close()
 	go signalHandler()
