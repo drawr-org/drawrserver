@@ -28,7 +28,7 @@ func NewHub() *Hub {
 	return &Hub{
 		BroadcastBus:  make(chan []byte),
 		IncomingBus:   make(chan []byte),
-		Timeout:       1,
+		Timeout:       10,
 		connections:   make(map[Connection]struct{}),
 		connectionsMx: sync.RWMutex{},
 	}
