@@ -14,8 +14,6 @@ import (
 	"github.com/pressly/chi"
 )
 
-const version = "0.1.0"
-
 var (
 	dbClient  bolt.DBClient
 	port      string
@@ -53,16 +51,6 @@ func init() {
 	}
 }
 
-func main() {
-	defer dbClient.Close()
-	go signalHandler()
-
-	log.Println("Listening on...", server.Addr)
-	if err := server.ListenAndServe(); err != nil {
-		panic(err)
-	}
-}
-
 func signalHandler() {
 	// TODO: implement save shutdown
 	// ELECTRON!
@@ -93,6 +81,7 @@ func initDatabase() {
 
 func initRouter() chi.Router {
 	r := chi.NewRouter()
+	r.Use(allowAllOrigins)
 	// route: statistics about the websocket connections
 	// mux.HandleFunc("/stats", func(w http.ResponseWriter, req *http.Request) {
 	// 	w.Write([]byte("this is the backend of the drawr service\n"))

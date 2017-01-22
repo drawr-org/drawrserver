@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/drawr-team/core-server/bolt"
 	"github.com/drawr-team/core-server/ulidgen"
-	"github.com/drawr-team/core-server/websock"
 )
 
 type User struct {
@@ -28,16 +26,15 @@ func sessionRouter() http.Handler {
 	// r.Get("/", listSessions)
 	r.Get("/new", newSession)
 	r.Route("/:sessionID", func(r chi.Router) {
-		r.Use(SessionCtx)
+		r.Use(sessionCtx)
 		r.Get("/", getSession)
 		r.Get("/ws", websocketHandler)
+		r.Get("/leave", leaveSession)
 	})
 	return r
 }
 
 func newSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
 	r.URL.Query().Get("")
 	uid := ulid.MustNew(ulidgen.GeneratorNow())
 
@@ -62,41 +59,7 @@ func newSession(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func SessionCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "sessionID")
-
-		// __test__ is for testing purposes
-		if id == "__test__" {
-			http.Error(w, http.StatusText(http.StatusOK), http.StatusOK)
-			return
-		}
-
-		if b, err := dbClient.Get(bolt.SessionBucket, id); err != nil {
-			if err == bolt.ErrNotFound {
-				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-				return
-			}
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		} else {
-			var session Session
-			if err := json.Unmarshal(b, &session); err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			ctx := context.WithValue(r.Context(), "session", session)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		}
-
-	})
-}
-
 func getSession(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-
 	ctx := r.Context()
 	session, ok := ctx.Value("session").(Session)
 	if !ok {
@@ -116,7 +79,7 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func websocketHandler(w http.ResponseWriter, r *http.Request) {
+func leaveSession(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	session, ok := ctx.Value("session").(Session)
 	if !ok {
@@ -125,16 +88,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if wsHubs[session.ID] == nil {
-		// initialize a new communication hub
-		wsHub := websock.NewHub()
-		wsHub.Verbose = verbose
-		provHub := HubProvider{hub: wsHub}
-		wsHubs[session.ID] = &provHub
-	}
-
-	go wsHubs[session.ID].hub.Run()
-	go monitor(wsHubs[session.ID], dbClient)
-	wsHandler := websock.Handler{Hub: wsHubs[session.ID].hub}
-	wsHandler.ServeHTTP(w, r)
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
+	return
 }
