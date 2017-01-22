@@ -9,6 +9,7 @@ install:
     - mkdir $GOPATH/bin
     - curl https://glide.sh/get | sh
     - glide install
+    - go generate ./cmd/drawrserver
 script:
     - go test -v ./bolt
 notifications:
