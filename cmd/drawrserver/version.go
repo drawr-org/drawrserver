@@ -3,4 +3,4 @@
 package main
 
 //go:generate bash ./version.sh
-const version = "drawrserver v0.2.2\nfrom github.com/drawr-team/core-server\ncompiled at <Sun Jan 22 16:57:32 CET 2017>\n"
+const version = "drawrserver v0.2.3\nfrom github.com/drawr-team/core-server\ncompiled at <Sun Jan 22 20:57:15 CET 2017>\n"
