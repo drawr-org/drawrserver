@@ -2,85 +2,81 @@ package websock
 
 import (
 	"log"
+	"os"
 	"sync"
-	"time"
 )
 
 // Hub keeps track of all connections
 type Hub struct {
-	// IncomingBus is for incoming messages
-	IncomingBus chan []byte
-	// BroadcastBus is for outgoing messages
-	BroadcastBus chan []byte
-	// Timeout in seconds
-	Timeout int64
 	Verbose bool
 
-	// connections is a list of registered connections
-	// we have to track and sync
-	connections map[Connection]struct{}
-	// protect parallel handling of connections
+	// TODO: maybe use map[ULID]Connection
+	connections   map[string]Connection
 	connectionsMx sync.RWMutex
+
+	// TODO: hub-wide message channel?
+
+	log log.Logger
 }
 
 // NewHub creates a new hub
 func NewHub() *Hub {
 	return &Hub{
-		BroadcastBus:  make(chan []byte),
-		IncomingBus:   make(chan []byte),
-		Timeout:       10,
-		connections:   make(map[Connection]struct{}),
+		Verbose:       false,
+		connections:   make(map[string]Connection),
 		connectionsMx: sync.RWMutex{},
+		log:           *log.New(os.Stdout, "[websock]", log.LstdFlags),
 	}
 }
 
-// Run starts monitoring on the hub
-// in a goroutine
-func (h *Hub) Run() {
-	for {
-		broadcastMessage := <-h.BroadcastBus
-		h.connectionsMx.RLock()
+// // Run starts monitoring on the hub
+// func (h *Hub) Run() {
+// 	for {
+// 		broadcastMessage := <-h.BroadcastBus
+// 		h.connectionsMx.RLock()
 
-		for c := range h.connections {
-			select {
-			case c.SendChan() <- broadcastMessage:
+// 		for c := range h.connections {
+// 			select {
+// 			case c.SendChan() <- broadcastMessage:
 
-			// close connection after no response for Timeout
-			case <-time.After(time.Duration(h.Timeout) * time.Second):
-				if h.Verbose {
-					log.Println("[hub] closing connection:", c)
-				}
-				h.RemoveConnection(c)
-			}
-		}
+// 			// close connection after no response for Timeout
+// 			case <-time.After(time.Duration(h.Timeout) * time.Second):
+// 				if h.Verbose {
+// 					h.log.Println("closing connection:", c)
+// 				}
+// 				h.RemoveConnection(c)
+// 			}
+// 		}
 
-		h.connectionsMx.RUnlock()
-	}
-}
+// 		h.connectionsMx.RUnlock()
+// 	}
+// }
 
 // AddConnection remembers a connection
-func (h *Hub) AddConnection(c Connection) {
+func (h *Hub) AddConnection(id string, c Connection) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
 	if h.Verbose {
-		log.Println("[hub] new connection:", c)
+		h.log.Println("new connection:", id)
 	}
 
-	h.connections[c] = struct{}{}
+	h.connections[id] = c
 }
 
 // RemoveConnection forgets a connection
-func (h *Hub) RemoveConnection(c Connection) {
+func (h *Hub) RemoveConnection(id string) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
 	if h.Verbose {
-		log.Println("[hub] remove connection:", c)
+		h.log.Println("remove connection:", id)
 	}
 
-	if _, ok := h.connections[c]; ok {
-		delete(h.connections, c)
-		close(c.SendChan())
+	if c, ok := h.connections[id]; ok {
+		if err := c.SocketConn().Close(); err != nil {
+			panic(err)
+		}
+		delete(h.connections, id)
 	}
 }

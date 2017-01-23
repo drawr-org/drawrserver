@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/drawr-team/core-server/ulidgen"
 	"github.com/drawr-team/core-server/websock"
 )
 
@@ -16,25 +17,17 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if wsHubs[session.ID] == nil {
-		// initialize a new communication hub
-		wsHub := websock.NewHub()
-		wsHub.Verbose = debug
-		provHub := HubProvider{hub: wsHub}
-		provHub.verbose = verbose
-		wsHubs[session.ID] = &provHub
-
-		if verbose {
-			log.Println("[server] open new hub")
-		}
+	if hubs[session.ID] == nil {
+		hubs[session.ID] = websock.NewHub()
 	}
 
-	go wsHubs[session.ID].hub.Run()
-	go monitor(wsHubs[session.ID], dbClient)
-	wsHandler := websock.Handler{Hub: wsHubs[session.ID].hub}
-
-	if verbose {
-		log.Println("[server] join hub")
+	c, err := websock.Upgrade(w, r, w.Header())
+	if err != nil {
+		log.Println("error upgrading connection")
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	wsHandler.ServeHTTP(w, r)
+
+	uid := ulidgen.Now()
+	hubs[session.ID].AddConnection(uid.String(), c)
 }

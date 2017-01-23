@@ -28,7 +28,8 @@ func sessionCtx(next http.Handler) http.Handler {
 			return
 		}
 
-		if b, err := dbClient.Get(bolt.SessionBucket, id); err != nil {
+		b, err := dbClient.Get(bolt.SessionBucket, id)
+		if err != nil {
 			if err == bolt.ErrNotFound {
 				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 				return
@@ -36,16 +37,15 @@ func sessionCtx(next http.Handler) http.Handler {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
-		} else {
-			var session Session
-			if err := json.Unmarshal(b, &session); err != nil {
-				log.Println(err)
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-			ctx := context.WithValue(r.Context(), "session", session)
-			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 
+		var session Session
+		if err := json.Unmarshal(b, &session); err != nil {
+			log.Println(err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		ctx := context.WithValue(r.Context(), "session", session)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

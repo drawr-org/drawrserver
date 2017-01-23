@@ -1,7 +1,6 @@
 package websock
 
 import (
-	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -9,67 +8,73 @@ import (
 
 // Connection wraps the websocket connection
 type Connection struct {
-	// Hub is the hub this connection belongs to
-	Hub *Hub
+	// connection message channels
+	send     chan []byte
+	received chan []byte
 
 	wsConn *websocket.Conn
-	// send is an outbound message channel
-	send chan []byte
 }
 
 // NewConnection constructs a new Connection
-func NewConnection(h *Hub, ws *websocket.Conn) Connection {
-	return Connection{
-		Hub:    h,
-		wsConn: ws,
-		send:   make(chan []byte, 256),
+func NewConnection(ws *websocket.Conn) *Connection {
+	return &Connection{
+		wsConn:   ws,
+		send:     make(chan []byte, 256),
+		received: make(chan []byte, 256),
 	}
 }
 
-// SendChan implements the Conn interface for websock.Hub
-// Returns the send channel
+// Worker starts the reader and writer
+// for the connection and returns a sync.WaitGroup
+func (c *Connection) Worker() {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go c.Reader(&wg)
+	go c.Writer(&wg)
+
+	wg.Wait()
+}
+
+// SendChan returns the send channel
 func (c *Connection) SendChan() chan []byte {
 	return c.send
 }
 
-// SocketConn implements the Conn interface for websock.Hub
-// Returns the actual websocket connection
+// ReceiveChan returns the received channel
+func (c *Connection) ReceiveChan() chan []byte {
+	return c.received
+}
+
+// SocketConn returns the actual websocket connection
 func (c *Connection) SocketConn() *websocket.Conn {
 	return c.wsConn
 }
 
 // Reader reads a message from the websocket connection
-func (c *Connection) Reader(wg *sync.WaitGroup, ws *websocket.Conn) {
+func (c *Connection) Reader(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
-		_, message, err := ws.ReadMessage()
-		if c.Hub.Verbose {
-			log.Println("[hub] received:", string(message))
-		}
+		_, message, err := c.wsConn.ReadMessage()
 		if err != nil {
 			// TODO
-			log.Println(err)
-			break
+			panic(err)
 		} else {
-			c.Hub.IncomingBus <- message
+			c.received <- message
 		}
 	}
 }
 
 // Writer writes a message to the websocket connection
-func (c *Connection) Writer(wg *sync.WaitGroup, ws *websocket.Conn) {
+func (c *Connection) Writer(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for message := range c.send {
-		err := ws.WriteMessage(websocket.TextMessage, message)
+		err := c.wsConn.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
 			// TODO
-			log.Println(err)
-			break
-		}
-		if c.Hub.Verbose {
-			log.Println("[hub] sent:", string(message))
+			panic(err)
 		}
 	}
 }
