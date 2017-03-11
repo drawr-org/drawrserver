@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/drawr-team/core-server/bolt"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
 	"github.com/pressly/chi"
 )
 

@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/drawr-team/core-server/ulidgen"
-	"github.com/drawr-team/core-server/websock"
+	"github.com/drawr-team/drawrserver/pkg/ulidgen"
+	"github.com/drawr-team/drawrserver/pkg/websock"
 )
 
 func websocketHandler(w http.ResponseWriter, r *http.Request) {

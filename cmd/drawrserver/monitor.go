@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/drawr-team/core-server/bolt"
-	"github.com/drawr-team/core-server/message"
-	"github.com/drawr-team/core-server/websock"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/message"
+	"github.com/drawr-team/drawrserver/pkg/websock"
 )
 
 // HubProvider wraps a websock.Hub

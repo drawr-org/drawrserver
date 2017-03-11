@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/drawr-team/core-server/bolt"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
 	"github.com/pressly/chi"
 )
 

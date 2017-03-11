@@ -8,8 +8,8 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pressly/chi"
 
-	"github.com/drawr-team/core-server/bolt"
-	"github.com/drawr-team/core-server/ulidgen"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/ulidgen"
 )
 
 type User struct {

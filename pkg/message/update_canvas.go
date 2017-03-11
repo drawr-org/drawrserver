@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/drawr-team/core-server/bolt"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
 )
 
 const (

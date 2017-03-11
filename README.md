@@ -1,8 +1,23 @@
-# drawr / core-server
+# drawrserver
 
 [![Build Status](https://jenkins.etsag.de/buildStatus/icon?job=drawr-core-server-linux)](https://jenkins.etsag.de/job/drawr-core-server-linux/)
 
-The backend to the drawr service
+# TODO:
+
+* package restructure:
+```
+├── cmd
+│   └── drawrserver
+├── dist
+│   └── init
+├── pkg
+│   ├── bolt
+│   ├── message
+│   ├── ulidgen
+│   └── websock
+└── vendor
+    └── ...
+```
 
 # API
 

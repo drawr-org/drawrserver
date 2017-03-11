@@ -1,4 +1,4 @@
-package: github.com/drawr-team/core-server
+package: github.com/drawr-team/drawrserver
 import:
 - package: github.com/gorilla/websocket
 - package: golang.org/x/sys
