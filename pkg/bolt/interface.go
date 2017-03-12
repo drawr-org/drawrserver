@@ -6,4 +6,6 @@ type DBClient interface {
 	Close()
 	Get(bucket, key string) ([]byte, error)
 	Put(bucket, key string, value interface{}) error
+	Stats() string
+	String() string
 }

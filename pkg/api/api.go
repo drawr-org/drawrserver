@@ -1,0 +1,81 @@
+// Package api implements the HTTP API for the drawrserver
+// TODO:
+// * move the database interface from pkg/bolt to this package to make migration to another DB possible
+package api
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/websock"
+)
+
+var (
+	apilog   = log.New(os.Stdout, "[api]", log.LstdFlags)
+	dbClient *bolt.Client
+	hubs     map[string]websock.Hub
+)
+
+// Options holds the basic configuration of the http server
+// TODO:
+// * implement reading options from a config file
+type Options struct {
+	Port      string    `json:"port"`
+	RWTimeout int64     `json:"timeout"`
+	Verbose   bool      `json:"verbose"`
+	Debug     bool      `json:"debug"`
+	Database  DBOptions `json:"database"`
+}
+
+// DBOptions holds the basic database configuration
+// TODO:
+// * should be moved to pkg/bolt
+type DBOptions struct {
+	Path    string `json:"path"`
+	Timeout int64  `json:"timeout"`
+}
+
+// Configure takes a http.Server and configures it with the specified Options
+func Configure(server *http.Server, opts *Options) error {
+	// setup router
+	apilog.Println("starting server on :" + opts.Port)
+	server.Addr = ":" + opts.Port
+	server.ReadTimeout = time.Duration(opts.RWTimeout)
+	server.WriteTimeout = time.Duration(opts.RWTimeout)
+
+	// open db
+	dbClient = bolt.NewClient()
+	if err := dbClient.Open(); err != nil {
+		apilog.Println("Error opening database:", err)
+		return err
+	}
+
+	route, err := setupRoutes()
+	if err != nil {
+		apilog.Println("Error setting up router:", err)
+		return err
+	}
+	server.Handler = route
+
+	return nil
+}
+
+// Cleanup closes the database client
+func Cleanup() error {
+	// TODO: notify websocket clients
+	// close db
+	dbClient.Close()
+
+	if r := recover(); r != nil {
+		err, ok := r.(error)
+		if !ok {
+			return fmt.Errorf("%v", r)
+		}
+		return err
+	}
+	return nil
+}
