@@ -4,10 +4,22 @@
 
 The backend of the drawr service
 
-# API
+# API documentation
 
-* **GET** `/session/new` - request a new session
-
-* **GET** `/session/<session-id>` - retrieve session information  
-
-* **ws://** `/session/<session-id>/ws` - connect to a session websocket
+<details>
+    <summary>`/session`</summary>
+    - `/new` :: **GET** :: requests a new session
+</details>
+<details>
+    <summary>`/session/:sessionID`</summary>
+    - `/` :: **GET** :: returns session information
+    - `/` :: **POST** :: updates session information
+    - `/` :: **DELETE** :: delete a session from the database
+    - `/ws` :: **GET** :: websocket of the session
+    - `/leave` :: **GET** :: disconnect from websocket **!deprecated**
+</details>
+<details>
+    <summary>`/stats`</summary>
+    - `/` :: **GET** :: statistics report for the server
+    - `/db` :: **GET** :: statistics report for the database
+</details>

@@ -21,10 +21,9 @@ const (
 )
 
 var (
-	// ErrExists means the value was found in the DB
-	ErrExists = errors.New("data already exists")
-	// ErrNotFound means the requested key could not be found in DB
-	ErrNotFound = errors.New("key not found")
+	ErrExists   = errors.New("Data exists already")
+	ErrNotFound = errors.New("Key not found")
+	ErrReadOnly = errors.New("Database is read-only")
 )
 
 // Client is a client to the bolt DB
@@ -68,7 +67,7 @@ func (c *Client) Open() error {
 	}
 
 	if c.Verbose {
-		log.Println("[bolt] opened database at", c.Path)
+		log.Println("opened database at", c.Path)
 	}
 
 	return tx.Commit()
@@ -82,7 +81,7 @@ func (c *Client) Close() {
 		}
 	}
 	if c.Verbose {
-		log.Println("[bolt] closed database:", c.Path)
+		log.Println("closed database:", c.Path)
 	}
 }
 
@@ -107,7 +106,7 @@ func (c *Client) Get(bucket, key string) ([]byte, error) {
 
 	data := b.Get([]byte(key))
 	if data == nil {
-		log.Println("[bolt] not found:", key)
+		log.Println(ErrNotFound.Error(), "->", key)
 		return nil, ErrNotFound
 	}
 
@@ -118,7 +117,7 @@ func (c *Client) Get(bucket, key string) ([]byte, error) {
 // It stores the value in the bucket
 func (c *Client) Put(bucket, key string, value interface{}) error {
 	if c.db.IsReadOnly() {
-		return fmt.Errorf("[bolt] db is readonly")
+		return ErrReadOnly
 	}
 
 	// Open a write connection
@@ -147,6 +146,80 @@ func (c *Client) Put(bucket, key string, value interface{}) error {
 		return err
 	}
 
+	if err := b.Put([]byte(key), data); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// Remove takes a bucket name and a key
+// It removes the value at key from the bucket
+func (c *Client) Remove(bucket, key string) error {
+	if c.db.IsReadOnly() {
+		return ErrReadOnly
+	}
+
+	tx, err := c.db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	b, err := tx.CreateBucket([]byte(bucket))
+	if err != nil {
+		if err != bolt.ErrBucketExists {
+			return err
+		}
+		b = tx.Bucket([]byte(bucket))
+	}
+	c.dataBuckets = append(c.dataBuckets, []byte(bucket))
+
+	if c.Verbose {
+		log.Printf("[bolt] remove %v from %v\n", key, bucket)
+	}
+
+	if err := b.Delete([]byte(key)); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (c *Client) Update(bucket, key string, value interface{}) error {
+	if c.db.IsReadOnly() {
+		return ErrReadOnly
+	}
+
+	tx, err := c.db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	b, err := tx.CreateBucket([]byte(bucket))
+	if err != nil {
+		if err != bolt.ErrBucketExists {
+			return err
+		}
+		b = tx.Bucket([]byte(bucket))
+	}
+	c.dataBuckets = append(c.dataBuckets, []byte(bucket))
+
+	if c.Verbose {
+		log.Printf("[bolt] update %v in %v\n", key, bucket)
+	}
+
+	// remove old value
+	if err := b.Delete([]byte(key)); err != nil {
+		return err
+	}
+
+	// put new value
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
 	if err := b.Put([]byte(key), data); err != nil {
 		return err
 	}

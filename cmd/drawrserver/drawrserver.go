@@ -1,23 +1,53 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
-	"github.com/drawr-team/core-server/bolt"
+	"github.com/drawr-team/drawrserver/pkg/api"
 )
 
 var (
-	dbClient bolt.DBClient
-	server   http.Server
+	port         = flag.String("p", "3000", "port to run the server on")
+	dbTimeout    = flag.Int64("timeout", 1, "how long until giving up on database transaction in Seconds")
+	dbPath       = flag.String("database", "data.db", "location of the database file")
+	verbose      = flag.Bool("verbose", false, "show log messages")
+	debug        = flag.Bool("debug", false, "show log messages")
+	printversion = flag.Bool("version", false, "print version number")
 )
 
-func main() {
-	defer dbClient.Close()
-	go signalHandler()
+func init() {
+	flag.Parse()
+	if *printversion {
+		fmt.Print(version)
+		os.Exit(0)
+	}
+}
 
-	log.Println("Listening on...", server.Addr)
+func main() {
+	server := new(http.Server)
+
+	// TODO make config loadable from JSON
+	if err := api.Configure(server, &api.Options{
+		Port:      *port,
+		RWTimeout: int64(5 * time.Second),
+		Database: api.DBOptions{
+			Path:    *dbPath,
+			Timeout: *dbTimeout * int64(time.Second),
+		},
+		Verbose: *verbose,
+		Debug:   *debug,
+	}); err != nil {
+		log.Fatal("Unable to configure API")
+	}
+
+	go catchSignalAndCleanup(server) // handle ctrl-c, etc...
+
 	if err := server.ListenAndServe(); err != nil {
-		panic(err)
+		log.Fatal("ServerError:", err)
 	}
 }
