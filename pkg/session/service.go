@@ -5,7 +5,7 @@ import (
 	"github.com/oklog/ulid"
 )
 
-var svc *service
+var svc service
 
 // Service holds the database client for the session service
 type service struct {

@@ -20,8 +20,11 @@ func sessionRouter() http.Handler {
 	r.Get("/new", sessionNew)
 	r.Route("/:"+sessionIDParam, func(r chi.Router) {
 		r.Use(sessionCtx)
+
 		r.Get("/", sessionGet)
+		r.Post("/", sessionUpdate)
 		r.Delete("/", sessionDelete)
+
 		r.Get("/ws", sessionJoin)
 		r.Get("/leave", sessionLeave)
 	})
@@ -60,18 +63,35 @@ func sessionCtx(next http.Handler) http.Handler {
 func sessionNew(w http.ResponseWriter, r *http.Request) {
 	s, err := session.New()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, err.Error())
 	}
-
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, s)
 }
 
 func sessionGet(w http.ResponseWriter, r *http.Request) {
 	s := FromSessionContext(r.Context())
-
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, s)
+}
+
+func sessionUpdate(w http.ResponseWriter, r *http.Request) {
+	s := FromSessionContext(r.Context())
+	var data struct {
+		session.Session
+		OmitID interface{} `json:"id,omitempty"`
+	}
+	if err := render.Bind(r.Body, &data); err != nil {
+		render.Status(r, http.StatusNotAcceptable)
+		render.JSON(w, r, err.Error())
+	}
+	if err := session.Update(s.ID, data.Session); err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, err.Error())
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, data.Session)
 }
 
 func sessionDelete(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +122,6 @@ func sessionLeave(w http.ResponseWriter, r *http.Request) {
 	// if err := service.Leave(session); err != nil {
 	// 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	// }
-
 	render.Status(r, http.StatusNotImplemented)
 	render.PlainText(w, r, http.StatusText(http.StatusNotImplemented))
 }
