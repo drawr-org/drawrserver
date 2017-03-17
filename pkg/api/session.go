@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/canvas"
 	"github.com/drawr-team/drawrserver/pkg/session"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/render"
@@ -106,12 +107,10 @@ func sessionDelete(w http.ResponseWriter, r *http.Request) {
 func sessionJoin(w http.ResponseWriter, r *http.Request) {
 	s := FromSessionContext(r.Context())
 	apilog.Println(s)
-
-	// connect to websocket
-	if err := websocketConnect(w, r, s); err != nil {
-		render.Status(r, http.StatusOK)
+	if err := canvas.Connect(w, r, s); err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, err.Error())
 	}
-
 	render.Status(r, http.StatusOK)
 	render.PlainText(w, r, http.StatusText(http.StatusOK))
 }

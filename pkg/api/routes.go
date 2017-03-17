@@ -21,9 +21,9 @@ func setupRoutes() (chi.Router, error) {
 	router := chi.NewRouter()
 	router.Use(allowAllOriginsMiddleware)
 
-	// r.Mount("/", uiRouter())
 	router.Mount("/session", sessionRouter())
 	router.Mount("/stats", statRouter())
+	router.Mount("/", uiRouter())
 
 	if r := recover(); r != nil {
 		err, ok := r.(error)

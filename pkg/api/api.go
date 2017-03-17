@@ -10,13 +10,12 @@ import (
 	"time"
 
 	"github.com/drawr-team/drawrserver/pkg/bolt"
-	"github.com/drawr-team/drawrserver/pkg/websock"
+	"github.com/drawr-team/drawrserver/pkg/canvas"
 )
 
 var (
 	apilog   = log.New(os.Stdout, "[api] ", log.LstdFlags)
 	dbClient *bolt.Client
-	hubs     map[string]websock.Hub
 )
 
 // Options holds the basic configuration of the http server
@@ -50,6 +49,7 @@ func Configure(server *http.Server, opts *Options) error {
 		apilog.Println("Error opening database:", err)
 		return err
 	}
+	canvas.Init()
 
 	routes, err := setupRoutes()
 	if err != nil {

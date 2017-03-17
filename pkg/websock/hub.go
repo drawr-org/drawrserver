@@ -1,10 +1,13 @@
 package websock
 
 import (
+	"errors"
 	"log"
 	"os"
 	"sync"
 )
+
+var ErrConnectionNotFound = errors.New("Connection not found")
 
 // Hub keeps track of all connections
 type Hub struct {
@@ -14,43 +17,23 @@ type Hub struct {
 	connections   map[string]Connection
 	connectionsMx sync.RWMutex
 
-	// TODO: hub-wide message channel?
+	// TODO hub-wide message channel?
+	// broadcast chan []byte
 
 	log log.Logger
 }
 
 // NewHub creates a new hub
 func NewHub() *Hub {
-	return &Hub{
+	h := &Hub{
 		Verbose:       false,
 		connections:   make(map[string]Connection),
 		connectionsMx: sync.RWMutex{},
-		log:           *log.New(os.Stdout, "[websock]", log.LstdFlags),
+		// broadcast:     make(chan []byte, 2048),
+		log: *log.New(os.Stdout, "[websock]", log.LstdFlags),
 	}
+	return h
 }
-
-// // Run starts monitoring on the hub
-// func (h *Hub) Run() {
-// 	for {
-// 		broadcastMessage := <-h.BroadcastBus
-// 		h.connectionsMx.RLock()
-
-// 		for c := range h.connections {
-// 			select {
-// 			case c.SendChan() <- broadcastMessage:
-
-// 			// close connection after no response for Timeout
-// 			case <-time.After(time.Duration(h.Timeout) * time.Second):
-// 				if h.Verbose {
-// 					h.log.Println("closing connection:", c)
-// 				}
-// 				h.RemoveConnection(c)
-// 			}
-// 		}
-
-// 		h.connectionsMx.RUnlock()
-// 	}
-// }
 
 // AddConnection remembers a connection
 func (h *Hub) AddConnection(id string, c Connection) {
@@ -74,9 +57,24 @@ func (h *Hub) RemoveConnection(id string) {
 	}
 
 	if c, ok := h.connections[id]; ok {
-		if err := c.SocketConn().Close(); err != nil {
+		if err := c.Close(); err != nil {
 			panic(err)
 		}
 		delete(h.connections, id)
+	}
+}
+
+func (h *Hub) GetConnection(id string) (*Connection, error) {
+	c, ok := h.connections[id]
+	if !ok {
+		return nil, ErrConnectionNotFound
+	}
+	return &c, nil
+}
+
+// Broadcast sends a message to all connections
+func (h *Hub) Broadcast(m []byte) {
+	for _, conn := range h.connections {
+		conn.SendChan() <- m
 	}
 }
