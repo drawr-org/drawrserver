@@ -10,7 +10,7 @@ import (
 type Hub struct {
 	Verbose bool
 
-	// TODO: maybe use map[ULID]Connection
+	// TODO maybe use map[ULID]Connection
 	connections   map[string]Connection
 	connectionsMx sync.RWMutex
 

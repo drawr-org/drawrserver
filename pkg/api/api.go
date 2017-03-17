@@ -1,6 +1,5 @@
 // Package api implements the HTTP API for the drawrserver
-// TODO:
-// * move the database interface from pkg/bolt to this package to make migration to another DB possible
+// TODO move the database client interface from pkg/bolt to this package to make migration to another DB possible
 package api
 
 import (
@@ -15,14 +14,13 @@ import (
 )
 
 var (
-	apilog   = log.New(os.Stdout, "[api]", log.LstdFlags)
+	apilog   = log.New(os.Stdout, "[api] ", log.LstdFlags)
 	dbClient *bolt.Client
 	hubs     map[string]websock.Hub
 )
 
 // Options holds the basic configuration of the http server
-// TODO:
-// * implement reading options from a config file
+// TODO implement reading options from a config file
 type Options struct {
 	Port      string    `json:"port"`
 	RWTimeout int64     `json:"timeout"`
@@ -32,8 +30,7 @@ type Options struct {
 }
 
 // DBOptions holds the basic database configuration
-// TODO:
-// * should be moved to pkg/bolt
+// TODO DBOptions should be moved to pkg/bolt
 type DBOptions struct {
 	Path    string `json:"path"`
 	Timeout int64  `json:"timeout"`
@@ -47,26 +44,26 @@ func Configure(server *http.Server, opts *Options) error {
 	server.ReadTimeout = time.Duration(opts.RWTimeout)
 	server.WriteTimeout = time.Duration(opts.RWTimeout)
 
-	// open db
+	// TODO can we move this to pkg/session?
 	dbClient = bolt.NewClient()
 	if err := dbClient.Open(); err != nil {
 		apilog.Println("Error opening database:", err)
 		return err
 	}
 
-	route, err := setupRoutes()
+	routes, err := setupRoutes()
 	if err != nil {
 		apilog.Println("Error setting up router:", err)
 		return err
 	}
-	server.Handler = route
+	server.Handler = routes
 
 	return nil
 }
 
 // Cleanup closes the database client
 func Cleanup() error {
-	// TODO: notify websocket clients
+	// TODO notify websocket clients about server shutdown
 	// close db
 	dbClient.Close()
 

@@ -58,7 +58,7 @@ func (c *Connection) Reader(wg *sync.WaitGroup) {
 	for {
 		_, message, err := c.wsConn.ReadMessage()
 		if err != nil {
-			// TODO
+			// TODO handle ReadMessage errors
 			panic(err)
 		} else {
 			c.received <- message
@@ -73,7 +73,7 @@ func (c *Connection) Writer(wg *sync.WaitGroup) {
 	for message := range c.send {
 		err := c.wsConn.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
-			// TODO
+			// TODO handle WriteMessage errors
 			panic(err)
 		}
 	}

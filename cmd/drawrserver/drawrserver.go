@@ -31,7 +31,7 @@ func init() {
 func main() {
 	server := new(http.Server)
 
-	// TODO: make config loadable from JSON
+	// TODO make config loadable from JSON
 	if err := api.Configure(server, &api.Options{
 		Port:      *port,
 		RWTimeout: int64(5 * time.Second),
