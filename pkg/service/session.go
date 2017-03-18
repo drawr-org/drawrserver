@@ -1,4 +1,4 @@
-package session
+package service
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"github.com/drawr-team/drawrserver/pkg/ulidgen"
 )
 
-// List returns all the sessions in the database
-func List() (sl []Session, err error) {
+// ListSessions returns all the sessions in the database
+func ListSessions() (sl []Session, err error) {
 	rawl, err := svc.db.List(bolt.SessionBucket)
 	if err != nil {
 		return
@@ -23,8 +23,8 @@ func List() (sl []Session, err error) {
 	return
 }
 
-// New returns a new Session
-func New(in *Session) (s Session, err error) {
+// NewSession returns a new Session
+func NewSession(in *Session) (s Session, err error) {
 	if in != nil {
 		s = *in
 	}
@@ -34,8 +34,8 @@ func New(in *Session) (s Session, err error) {
 	return
 }
 
-// Get returns the Session with id
-func Get(id string) (s Session, err error) {
+// GetSession returns the Session with id
+func GetSession(id string) (s Session, err error) {
 	raw, err := svc.db.Get(bolt.SessionBucket, id)
 	if err != nil {
 		return
@@ -45,14 +45,14 @@ func Get(id string) (s Session, err error) {
 	return
 }
 
-// Update changes the Session with id
-func Update(id string, s Session) (err error) {
+// UpdateSession changes the Session with id
+func UpdateSession(id string, s Session) (err error) {
 	svc.log.Printf("update: %+v\n", s)
 	return svc.db.Update(bolt.SessionBucket, id, s)
 }
 
-// Delete removes s
-func Delete(s Session) error {
+// DeleteSession removes s
+func DeleteSession(s Session) error {
 	svc.log.Printf("delete: %+v\n", s)
 	return svc.db.Remove(bolt.SessionBucket, s.ID)
 }

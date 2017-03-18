@@ -3,14 +3,14 @@ package canvas
 import (
 	"net/http"
 
-	"github.com/drawr-team/drawrserver/pkg/session"
+	"github.com/drawr-team/drawrserver/pkg/service"
 	"github.com/drawr-team/drawrserver/pkg/ulidgen"
 	"github.com/drawr-team/drawrserver/pkg/websock"
 )
 
-var svc service
+var svc canvasService
 
-type service struct {
+type canvasService struct {
 	hubs map[string]*websock.Hub
 }
 
@@ -20,7 +20,7 @@ func Init() {
 }
 
 // Connect adds a new client connection to the session hub
-func Connect(w http.ResponseWriter, r *http.Request, s session.Session) error {
+func Connect(w http.ResponseWriter, r *http.Request, s service.Session) error {
 	_, ok := svc.hubs[s.ID]
 	if !ok {
 		svc.hubs[s.ID] = websock.NewHub()

@@ -1,4 +1,4 @@
-package session
+package service
 
 import (
 	"log"
@@ -19,8 +19,8 @@ type service struct {
 
 // Session holds the session information
 type Session struct {
-	ID    string `json:"id"`
-	Users []User `json:"users"`
+	ID    string   `json:"id"`
+	Users []string `json:"users"`
 }
 
 // User holds the user information
