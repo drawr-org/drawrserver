@@ -18,16 +18,23 @@ func sessionRouter() http.Handler {
 	session.Init(dbClient)
 
 	r := chi.NewRouter()
-	r.Get("/new", sessionNew)
+	notAllowed := r.MethodNotAllowedHandler()
+	r.Get("/", sessionList)
+	r.Put("/", sessionNewPUT)
+	r.Post("/", notAllowed)
+	r.Get("/new", sessionNewGET)
+	r.Delete("/", notAllowed)
+
 	r.Route("/:"+sessionIDParam, func(r chi.Router) {
 		r.Use(sessionCtx)
-
 		r.Get("/", sessionGet)
+		r.Put("/", notAllowed)
 		r.Post("/", sessionUpdate)
 		r.Delete("/", sessionDelete)
 
 		r.Get("/ws", sessionJoin)
 		r.Get("/leave", sessionLeave)
+
 	})
 
 	return r
@@ -61,8 +68,36 @@ func sessionCtx(next http.Handler) http.Handler {
 	})
 }
 
-func sessionNew(w http.ResponseWriter, r *http.Request) {
-	s, err := session.New()
+func sessionList(w http.ResponseWriter, r *http.Request) {
+	sl, err := session.List()
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, err.Error())
+	}
+	render.Status(r, http.StatusOK)
+	wrapJSON(w, r, "sessions", sl)
+}
+
+func sessionNewPUT(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		session.Session
+		OmitID interface{} `json:"id,omitempty"`
+	}
+	if err := render.Bind(r.Body, &data); err != nil {
+		render.Status(r, http.StatusNotAcceptable)
+		render.JSON(w, r, err.Error())
+	}
+	s, err := session.New(&data.Session)
+	if err != nil {
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, err.Error())
+	}
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, s)
+}
+
+func sessionNewGET(w http.ResponseWriter, r *http.Request) {
+	s, err := session.New(nil)
 	if err != nil {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, err.Error())

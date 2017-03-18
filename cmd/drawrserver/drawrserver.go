@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/drawr-team/drawrserver/pkg/api"
+	"github.com/drawr-team/drawrserver/pkg/bolt"
 )
 
 var (
@@ -35,9 +36,10 @@ func main() {
 	if err := api.Configure(server, &api.Options{
 		Port:      *port,
 		RWTimeout: int64(5 * time.Second),
-		Database: api.DBOptions{
+		Database: &bolt.Options{
 			Path:    *dbPath,
 			Timeout: *dbTimeout * int64(time.Second),
+			Verbose: *verbose,
 		},
 		Verbose: *verbose,
 		Debug:   *debug,
