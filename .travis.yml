@@ -1,6 +1,6 @@
 language: go
 go:
-    - 1.7
+    - 1.7.x
     - tip
 env:
     global:
@@ -11,7 +11,7 @@ install:
     - glide install
     - go generate ./cmd/drawrserver
 script:
-    - go test -v ./bolt
+    - go test -v ./pkg/bolt
 notifications:
     email: false
 matrix:
