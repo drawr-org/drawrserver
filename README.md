@@ -20,7 +20,7 @@ The backend of the drawr service
 - `/` :: **POST** :: updates session information
 - `/` :: **DELETE** :: delete a session from the database
 - `/ws` :: **GET** :: websocket of the session
-- `/leave` :: **GET** :: disconnect from websocket **!deprecated**
+- `/leave` :: **GET** :: disconnect from websocket *deprecated*
 
 </details>
 
@@ -35,6 +35,6 @@ The backend of the drawr service
 <details>
 <summary>/version</summary>
 
-- `/` :: GET :: returns **API** version (also used for connection testing)
+- `/` :: **GET** :: returns API version (also used for connection testing)
 
 </details>
