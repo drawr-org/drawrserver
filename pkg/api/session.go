@@ -150,8 +150,6 @@ func sessionJoin(w http.ResponseWriter, r *http.Request) {
 		render.Status(r, http.StatusInternalServerError)
 		render.JSON(w, r, err.Error())
 	}
-	render.Status(r, http.StatusOK)
-	render.PlainText(w, r, http.StatusText(http.StatusOK))
 }
 
 func sessionLeave(w http.ResponseWriter, r *http.Request) {
