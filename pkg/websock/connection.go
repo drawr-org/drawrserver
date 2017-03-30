@@ -1,12 +1,16 @@
 package websock
 
-import "github.com/gorilla/websocket"
+import (
+	"sync"
+
+	"github.com/gorilla/websocket"
+)
 
 // Connection wraps a messenger connection
 type Connection struct {
-	messenger Messenger
+	ws *websocket.Conn
 
-	quit chan chan struct{}
+	wg *sync.WaitGroup
 	// connection message channels
 	send     chan []byte
 	received chan []byte
@@ -18,10 +22,10 @@ type Connection struct {
 func NewConnection(ws *websocket.Conn) *Connection {
 	println("NewConnection:", ws.LocalAddr())
 	c := &Connection{
-		messenger: WebsocketMessenger{ws},
-		quit:      make(chan chan struct{}),
-		send:      make(chan []byte),
-		received:  make(chan []byte),
+		ws:       ws,
+		wg:       new(sync.WaitGroup),
+		send:     make(chan []byte),
+		received: make(chan []byte),
 	}
 	if ws != nil {
 		c.Addr = ws.RemoteAddr().String()
@@ -31,6 +35,17 @@ func NewConnection(ws *websocket.Conn) *Connection {
 
 	go c.reader()
 	go c.writer()
+
+	c.ws.SetCloseHandler(func(code int, text string) error {
+		switch code {
+		case websocket.CloseGoingAway:
+			println("peer going away")
+		case websocket.CloseNormalClosure:
+			println("peer closing normally")
+		}
+		return nil
+	})
+
 	return c
 }
 
@@ -46,46 +61,56 @@ func (c *Connection) ReceiveChan() chan []byte {
 
 // Close sends the done signal to the workers
 func (c *Connection) Close() error {
-	q := make(chan struct{})
-	c.quit <- q
-	<-q
+	println("closing connection", c.Addr)
 
-	return c.messenger.Close()
+	payload := websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down")
+	if err := c.ws.WriteMessage(websocket.CloseMessage, payload); err != nil {
+		return err
+	}
+
+	println("waiting for workers to quit")
+	close(c.send) // closing send channel causes writer to stop
+	c.wg.Wait()
+
+	println("closing connection was successfull")
+	return c.ws.Close()
 }
 
 // Reader reads a message from the websocket connection
 func (c *Connection) reader() {
+	c.wg.Add(1)
 	for {
-		msg, err := c.messenger.ReadMessage()
+		t, msg, err := c.ws.ReadMessage()
 		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+				println("connection to peer closed as expected")
+				break
+			}
 			// TODO handle ReadMessage errors
-			panic(err)
+			panic("Failed to read message: " + err.Error())
 		}
 
-		select {
-		case c.received <- msg:
-			println("got msg:", msg)
-		case q := <-c.quit:
-			close(q)
-			return
+		switch t {
+		case websocket.TextMessage:
+			c.received <- msg
+		case websocket.BinaryMessage:
+			panic("cannot handle binary message")
 		}
 	}
+	c.wg.Done()
+	println("reader ended")
 }
 
 // writer writes a message to the websocket connection
 func (c *Connection) writer() {
-	for {
-		select {
-		case msg := <-c.send:
-			println("write msg:", msg)
-			err := c.messenger.WriteMessage(msg)
-			if err != nil {
-				// TODO handle WriteMessage errors
-				panic(err)
-			}
-		case q := <-c.quit:
-			close(q)
-			return
+	c.wg.Add(1)
+	for msg := range c.send {
+		err := c.ws.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
+			// TODO handle WriteMessage errors
+			panic("Failed to write message: " + err.Error())
 		}
 	}
+	c.wg.Done()
+	println("writer ended")
 }
