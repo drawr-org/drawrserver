@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 var ErrConnectionNotFound = errors.New("Connection not found")
@@ -32,7 +34,7 @@ func NewHub() *Hub {
 		connectionsMx: sync.RWMutex{},
 		broadcast:     make(chan []byte),
 		quit:          make(chan chan struct{}),
-		log:           *log.New(os.Stdout, "[websock]", log.LstdFlags),
+		log:           *log.New(os.Stdout, "[ws]\t", log.LstdFlags),
 	}
 	go h.broadcaster()
 	return h
@@ -44,8 +46,13 @@ func (h *Hub) BroadcastChan() chan []byte {
 
 // Close sends the quit signal to the monitor worker
 func (h *Hub) Close() {
+	h.log.Println("closing hub")
 	q := make(chan struct{})
 	h.quit <- q
+
+	for cID := range h.connections {
+		h.RemoveConnection(cID)
+	}
 	<-q
 }
 
@@ -54,11 +61,12 @@ func (h *Hub) AddConnection(id string, c Connection) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
+	h.connections[id] = c
+
 	if h.Verbose {
-		h.log.Println("new connection:", id)
+		h.log.Printf("add connection: %v (%v)", id, c.Addr)
 	}
 
-	h.connections[id] = c
 }
 
 // RemoveConnection forgets a connection
@@ -66,16 +74,18 @@ func (h *Hub) RemoveConnection(id string) {
 	h.connectionsMx.Lock()
 	defer h.connectionsMx.Unlock()
 
-	if h.Verbose {
-		h.log.Println("remove connection:", id)
-	}
-
-	if c, ok := h.connections[id]; ok {
+	c, ok := h.connections[id]
+	if ok {
 		if err := c.Close(); err != nil {
-			panic(err)
+			panic("Failed to remove connection" + id + " from hub: " + err.Error())
 		}
 		delete(h.connections, id)
 	}
+
+	if h.Verbose {
+		h.log.Printf("remove connection: %v (%v)", id, c.Addr)
+	}
+
 }
 
 func (h *Hub) GetConnection(id string) (*Connection, error) {
@@ -87,19 +97,26 @@ func (h *Hub) GetConnection(id string) (*Connection, error) {
 }
 
 // broadcast sends a message to all connections
-func (h *Hub) sendBroadcastMessage(m []byte) {
+func (h *Hub) sendBroadcastMessage(m []byte) error {
 	for cID, conn := range h.connections {
-		println("notified:", cID)
-		conn.SendChan() <- m
+		h.log.Println("notified:", cID)
+		pm, err := websocket.NewPreparedMessage(websocket.TextMessage, m)
+		if err != nil {
+			return err
+		}
+		if err := conn.ws.WritePreparedMessage(pm); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (h *Hub) broadcaster() {
-	println("starting broadcaster worker...")
+	h.log.Println("starting broadcaster worker...")
 	for {
 		select {
 		case msg := <-h.broadcast:
-			println("broadcasting", string(msg))
+			h.log.Println("broadcasting:", string(msg))
 			h.sendBroadcastMessage(msg)
 		case q := <-h.quit:
 			close(q)
