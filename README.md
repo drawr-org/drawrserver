@@ -1,16 +1,40 @@
-# drawr / core-server
+# drawrserver
 
 [![Build Status](https://jenkins.etsag.de/buildStatus/icon?job=drawr-core-server-linux)](https://jenkins.etsag.de/job/drawr-core-server-linux/)
 
-The backend to the drawr service
+The backend of the drawr service
 
-# API
+# API documentation
 
-## GET: `/session/new`
-Request a new session
+<details>
+<summary>/session</summary>
 
-## GET: `/session/[session-id]`
-Get session information  
+- `/new` :: **GET** :: requests a new session
 
-## ws:// `/session/[session-id]/ws`
-Connect to a session websocket
+</details>
+
+<details>
+<summary>/session/:sessionID</summary>
+
+- `/` :: **GET** :: returns session information
+- `/` :: **POST** :: updates session information
+- `/` :: **DELETE** :: delete a session from the database
+- `/ws` :: **GET** :: websocket of the session
+- `/leave` :: **GET** :: disconnect from websocket *deprecated*
+
+</details>
+
+<details>
+<summary>/stats</summary>
+
+- `/` :: **GET** :: statistics report for the server
+- `/db` :: **GET** :: statistics report for the database
+
+</details>
+
+<details>
+<summary>/version</summary>
+
+- `/` :: **GET** :: returns API version (also used for connection testing)
+
+</details>

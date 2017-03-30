@@ -8,7 +8,7 @@ import (
 var c *Client
 
 func TestClient(t *testing.T) {
-	c = NewClient()
+	c = NewClient(nil)
 	c.Open()
 
 	t.Run("PutSession", testPutSession)

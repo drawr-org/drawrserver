@@ -1,12 +1,13 @@
-package main
+package api
 
 import (
 	"net/http"
 
 	"github.com/pressly/chi"
+	"github.com/pressly/chi/render"
 )
 
-func reportRouter() http.Handler {
+func statRouter() http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/", statReport)
@@ -19,16 +20,16 @@ func statReport(w http.ResponseWriter, r *http.Request) {
 
 	out = out + "drawr backend:\n"
 	out = out + "connected clients:\n"
-	for id, hub := range wsHubs {
-		out = out + "> " + id + ":"
-		ls := hub.hub.ListConnections()
-		for _, s := range ls {
-			out = out + s + "\n"
-		}
-		out = out + "\n"
-	}
+	// for id, hub := range wsHubs {
+	// 	out = out + "> " + id + ":"
+	// 	ls := hub.hub.ListConnections()
+	// 	for _, s := range ls {
+	// 		out = out + s + "\n"
+	// 	}
+	// 	out = out + "\n"
+	// }
 
-	w.Write([]byte(out))
+	render.PlainText(w, r, out)
 }
 
 func dbReport(w http.ResponseWriter, r *http.Request) {
