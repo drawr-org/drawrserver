@@ -12,6 +12,7 @@ The backend of the drawr service
 - `/new` :: **GET** :: requests a new session
 
 </details>
+
 <details>
 <summary>/session/:sessionID</summary>
 
@@ -22,10 +23,18 @@ The backend of the drawr service
 - `/leave` :: **GET** :: disconnect from websocket **!deprecated**
 
 </details>
+
 <details>
 <summary>/stats</summary>
 
 - `/` :: **GET** :: statistics report for the server
 - `/db` :: **GET** :: statistics report for the database
+
+</details>
+
+<details>
+<summary>/version</summary>
+
+- `/` :: GET :: returns **API** version (also used for connection testing)
 
 </details>

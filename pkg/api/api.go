@@ -13,6 +13,8 @@ import (
 	"github.com/drawr-team/drawrserver/pkg/canvas"
 )
 
+const version string = "0.2.0"
+
 var (
 	apilog   = log.New(os.Stdout, "[api]\t", log.LstdFlags)
 	dbClient *bolt.Client

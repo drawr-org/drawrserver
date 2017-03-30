@@ -31,6 +31,7 @@ func setupRoutes(opts *Options) (chi.Router, error) {
 
 	router.Mount("/session", sessionRouter())
 	router.Mount("/stats", statRouter())
+	router.Get("/version", versionHandler)
 	router.Mount("/", uiRouter())
 
 	if r := recover(); r != nil {
@@ -62,4 +63,8 @@ func wrapJSON(w http.ResponseWriter, r *http.Request, fieldname string, v interf
 	var wrapped = make(map[string]interface{})
 	wrapped[fieldname] = v
 	render.JSON(w, r, wrapped)
+}
+
+func versionHandler(w http.ResponseWriter, r *http.Request) {
+	wrapJSON(w, r, "version", version)
 }

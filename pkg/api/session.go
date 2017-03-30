@@ -25,6 +25,11 @@ func sessionRouter() http.Handler {
 	r.Get("/new", sessionNewGET)
 	r.Delete("/", notAllowed)
 
+	// reroute old test endpoint
+	r.Get("/__test__", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/version", http.StatusMovedPermanently)
+	})
+
 	r.Route("/:"+sessionIDParam, func(r chi.Router) {
 		r.Use(sessionCtx)
 		r.Get("/", sessionGet)
