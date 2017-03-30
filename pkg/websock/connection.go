@@ -1,17 +1,12 @@
 package websock
 
-import (
-	"sync"
-
-	"github.com/gorilla/websocket"
-)
+import "github.com/gorilla/websocket"
 
 // Connection wraps a messenger connection
 type Connection struct {
 	messenger Messenger
-	wg        *sync.WaitGroup
-	done      bool
 
+	quit chan chan struct{}
 	// connection message channels
 	send     chan []byte
 	received chan []byte
@@ -21,40 +16,22 @@ type Connection struct {
 
 // NewConnection constructs a new Connection from a websocket.Conn
 func NewConnection(ws *websocket.Conn) *Connection {
+	println("NewConnection:", ws.LocalAddr())
 	c := &Connection{
 		messenger: WebsocketMessenger{ws},
-		wg:        new(sync.WaitGroup),
-		done:      false,
-		send:      make(chan []byte, 256),
-		received:  make(chan []byte, 256),
+		quit:      make(chan chan struct{}),
+		send:      make(chan []byte),
+		received:  make(chan []byte),
 	}
 	if ws != nil {
 		c.Addr = ws.RemoteAddr().String()
 	} else {
 		c.Addr = "none"
 	}
+
+	go c.reader()
+	go c.writer()
 	return c
-}
-
-// RunWorkers starts the reader and writer in seperate goroutines
-// for the connection and returns a sync.WaitGroup
-func (c *Connection) RunWorkers() {
-	go c.Reader()
-	go c.Writer()
-}
-
-// Wait blocks until the Read and Write workers finish
-func (c *Connection) Wait() {
-	c.wg.Wait()
-}
-
-// StopWorkers sends the done signal to the workers
-func (c *Connection) Close() error {
-	close(c.send)
-	c.done = true
-	c.wg.Wait() // wait for Reader to finish
-	close(c.received)
-	return c.messenger.Close()
 }
 
 // SendChan returns the send channel
@@ -67,32 +44,48 @@ func (c *Connection) ReceiveChan() chan []byte {
 	return c.received
 }
 
-// Reader reads a message from the websocket connection
-func (c *Connection) Reader() {
-	c.wg.Add(1)
-	defer c.wg.Done()
+// Close sends the done signal to the workers
+func (c *Connection) Close() error {
+	q := make(chan struct{})
+	c.quit <- q
+	<-q
 
-	for !c.done {
-		message, err := c.messenger.ReadMessage()
+	return c.messenger.Close()
+}
+
+// Reader reads a message from the websocket connection
+func (c *Connection) reader() {
+	for {
+		msg, err := c.messenger.ReadMessage()
 		if err != nil {
 			// TODO handle ReadMessage errors
 			panic(err)
-		} else {
-			c.received <- message
+		}
+
+		select {
+		case c.received <- msg:
+			println("got msg:", msg)
+		case q := <-c.quit:
+			close(q)
+			return
 		}
 	}
 }
 
-// Writer writes a message to the websocket connection
-func (c *Connection) Writer() {
-	c.wg.Add(1)
-	defer c.wg.Done()
-
-	for message := range c.send {
-		err := c.messenger.WriteMessage(message)
-		if err != nil {
-			// TODO handle WriteMessage errors
-			panic(err)
+// writer writes a message to the websocket connection
+func (c *Connection) writer() {
+	for {
+		select {
+		case msg := <-c.send:
+			println("write msg:", msg)
+			err := c.messenger.WriteMessage(msg)
+			if err != nil {
+				// TODO handle WriteMessage errors
+				panic(err)
+			}
+		case q := <-c.quit:
+			close(q)
+			return
 		}
 	}
 }
