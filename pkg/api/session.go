@@ -13,6 +13,15 @@ import (
 
 const sessionIDParam string = "sessionID"
 
+type sessionResponse struct {
+	service.Session
+	OmitID interface{} `json:"id,omitempty"`
+}
+
+func (sr *sessionResponse) Bind(r *http.Request) error {
+	return nil
+}
+
 // sessionRouter sets up the session subroute
 func sessionRouter() http.Handler {
 	service.Init(dbClient)
@@ -83,11 +92,8 @@ func sessionList(w http.ResponseWriter, r *http.Request) {
 }
 
 func sessionNewPUT(w http.ResponseWriter, r *http.Request) {
-	var data struct {
-		service.Session
-		OmitID interface{} `json:"id,omitempty"`
-	}
-	if err := render.Bind(r.Body, &data); err != nil {
+	var data sessionResponse
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}
@@ -118,11 +124,8 @@ func sessionGet(w http.ResponseWriter, r *http.Request) {
 
 func sessionUpdate(w http.ResponseWriter, r *http.Request) {
 	s := fromSessionContext(r.Context())
-	var data struct {
-		service.Session
-		OmitID interface{} `json:"id,omitempty"`
-	}
-	if err := render.Bind(r.Body, &data); err != nil {
+	var data sessionResponse
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}
@@ -156,7 +159,7 @@ func sessionLeave(w http.ResponseWriter, r *http.Request) {
 	s := fromSessionContext(r.Context())
 	apilog.Println(s)
 	// if err := service.Leave(session); err != nil {
-	// 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	//	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	// }
 	render.Status(r, http.StatusNotImplemented)
 	render.PlainText(w, r, http.StatusText(http.StatusNotImplemented))
