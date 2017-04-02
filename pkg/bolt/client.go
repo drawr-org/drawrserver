@@ -15,11 +15,11 @@ import (
 
 const (
 	// DBPath is the location of the bolt DB
-	DBPath = "data.db"
+	DBPath string = "data.db"
 	// UserBucket is the name of the bolt bucket that stores the users
-	UserBucket = "users"
+	UserBucket string = "users"
 	// SessionBucket is the name of the bolt bucket that stores sessions
-	SessionBucket = "sessions"
+	SessionBucket string = "sessions"
 )
 
 var (
