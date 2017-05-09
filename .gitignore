@@ -1,6 +1,5 @@
-_*
+_*.go
+_*/
 
 glide.lock
 vendor/
-
-drawrserver
