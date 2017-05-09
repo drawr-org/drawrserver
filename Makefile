@@ -2,6 +2,9 @@
 
 all: drawrserver
 
+glide.lock:
+	glide update
+
 vendor: glide.lock
 	glide install
 
