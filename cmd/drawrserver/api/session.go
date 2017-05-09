@@ -90,7 +90,7 @@ func sessionList(w http.ResponseWriter, r *http.Request) {
 
 func sessionNewPUT(w http.ResponseWriter, r *http.Request) {
 	var data sessionResponse
-	if err := render.Bind(r.Body, &data); err != nil {
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		// render.JSON(w, r, err.Error())
 	}
@@ -119,7 +119,7 @@ func sessionGet(w http.ResponseWriter, r *http.Request) {
 func sessionUpdate(w http.ResponseWriter, r *http.Request) {
 	s := fromSessionContext(r.Context())
 	var data sessionResponse
-	if err := render.Bind(r.Body, &data); err != nil {
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		// render.JSON(w, r, err.Error())
 	}

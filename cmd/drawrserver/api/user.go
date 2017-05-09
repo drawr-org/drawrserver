@@ -92,7 +92,7 @@ func userGet(w http.ResponseWriter, r *http.Request) {
 func userNew(w http.ResponseWriter, r *http.Request) {
 	u := fromUserContext(r.Context())
 	var data userResponse
-	if err := render.Bind(r.Body, &data); err != nil {
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}
@@ -108,7 +108,7 @@ func userNew(w http.ResponseWriter, r *http.Request) {
 func userUpdate(w http.ResponseWriter, r *http.Request) {
 	u := fromUserContext(r.Context())
 	var data userResponse
-	if err := render.Bind(r.Body, &data); err != nil {
+	if err := render.Bind(r, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}
