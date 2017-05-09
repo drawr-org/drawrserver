@@ -1,0 +1,8 @@
+[Server]
+  Host = "127.0.0.1"
+  Port = 3000
+  RWTimeout = 5
+
+[Database]
+  Path = "data.db"
+  Timeout = 1

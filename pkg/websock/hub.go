@@ -2,10 +2,9 @@ package websock
 
 import (
 	"errors"
-	"log"
-	"os"
 	"sync"
 
+	log "github.com/golang/glog"
 	"github.com/gorilla/websocket"
 )
 
@@ -23,18 +22,15 @@ type Hub struct {
 	broadcast chan []byte
 
 	quit chan chan struct{}
-	log  log.Logger
 }
 
 // NewHub creates a new hub
 func NewHub() *Hub {
 	h := &Hub{
-		Verbose:       false,
 		connections:   make(map[string]Connection),
 		connectionsMx: sync.RWMutex{},
 		broadcast:     make(chan []byte),
 		quit:          make(chan chan struct{}),
-		log:           *log.New(os.Stdout, "[ws]\t", log.LstdFlags),
 	}
 	go h.broadcaster()
 	return h
@@ -46,7 +42,7 @@ func (h *Hub) BroadcastChan() chan []byte {
 
 // Close sends the quit signal to the monitor worker
 func (h *Hub) Close() {
-	h.log.Println("closing hub")
+	log.Info("closing hub")
 	q := make(chan struct{})
 	h.quit <- q
 
@@ -63,9 +59,7 @@ func (h *Hub) AddConnection(id string, c Connection) {
 
 	h.connections[id] = c
 
-	if h.Verbose {
-		h.log.Printf("add connection: %v (%v)", id, c.Addr)
-	}
+	// h.log.Printf("add connection: %v (%v)", id, c.Addr)
 
 }
 
@@ -77,14 +71,12 @@ func (h *Hub) RemoveConnection(id string) {
 	c, ok := h.connections[id]
 	if ok {
 		if err := c.Close(); err != nil {
-			panic("Failed to remove connection" + id + " from hub: " + err.Error())
+			log.Exitf("Failed to remove connection %d from hub: %s", id, err)
 		}
 		delete(h.connections, id)
 	}
 
-	if h.Verbose {
-		h.log.Printf("remove connection: %v (%v)", id, c.Addr)
-	}
+	// h.log.Printf("remove connection: %v (%v)", id, c.Addr)
 
 }
 
@@ -99,7 +91,7 @@ func (h *Hub) GetConnection(id string) (*Connection, error) {
 // broadcast sends a message to all connections
 func (h *Hub) sendBroadcastMessage(m []byte) error {
 	for cID, conn := range h.connections {
-		h.log.Println("notified:", cID)
+		log.Info("notified:", cID)
 		pm, err := websocket.NewPreparedMessage(websocket.TextMessage, m)
 		if err != nil {
 			return err
@@ -112,11 +104,11 @@ func (h *Hub) sendBroadcastMessage(m []byte) error {
 }
 
 func (h *Hub) broadcaster() {
-	h.log.Println("starting broadcaster worker...")
+	log.Info("starting broadcaster worker...")
 	for {
 		select {
 		case msg := <-h.broadcast:
-			h.log.Println("broadcasting:", string(msg))
+			log.Info("broadcasting:", string(msg))
 			h.sendBroadcastMessage(msg)
 		case q := <-h.quit:
 			close(q)

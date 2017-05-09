@@ -1,57 +1,82 @@
 package service
 
 import (
-	"encoding/json"
-
-	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/boltdb/bolt"
+	"github.com/drawr-team/drawrserver/pkg/model"
 	"github.com/drawr-team/drawrserver/pkg/ulidgen"
+
+	log "github.com/golang/glog"
+	"github.com/simia-tech/boltx"
 )
 
 // ListUsers returnu all the sessionu in the database
-func ListUsers() (ul []User, err error) {
-	rawl, err := svc.db.List(bolt.UserBucket)
-	if err != nil {
-		return
-	}
-	for _, b := range rawl {
-		var u User
-		err = json.Unmarshal(b, &u)
-		ul = append(ul, u)
-	}
-	svc.log.Printf("list: %+v\n", ul)
+func ListUsers() (ul []model.User, err error) {
+	log.Info("list users")
+
+	err = svc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(userBucketKey)
+		_, _, err := boltx.ForEach(b, &model.User{}, func(k []byte, v interface{}) (boltx.Action, error) {
+			ul = append(ul, *v.(*model.User))
+			return boltx.ActionReturn, nil
+		})
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		return nil
+	})
+	log.V(2).Infof("payload: %+v", ul)
 	return
 }
 
 // NewUser returnu a new User
-func NewUser(in *User) (u User, err error) {
+func NewUser(in *model.User) (u model.User, err error) {
+	log.Info("new user")
 	if in != nil {
 		u = *in
 	}
 	u.ID = ulidgen.Now().String()
-	err = svc.db.Put(bolt.UserBucket, u.ID, u)
-	svc.log.Printf("new: %+v\n", u)
+
+	err = svc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(sessionBucketKey)
+		return boltx.PutModel(b, []byte(u.ID), &u)
+	})
+
+	log.V(2).Info("payload: %+v\n", u)
 	return
 }
 
 // GetUser returnu the User with id
-func GetUser(id string) (u User, err error) {
-	raw, err := svc.db.Get(bolt.UserBucket, id)
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(raw, &u)
-	svc.log.Printf("get: %+v\n", u)
+func GetUser(id string) (u model.User, err error) {
+	log.Info("get user")
+
+	err = svc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(userBucketKey)
+		ok, err := boltx.GetModel(b, []byte(id), &u)
+		if !ok {
+			err = ErrNotFound
+		}
+		return err
+	})
+
+	log.V(2).Info("payload: %+v\n", u)
 	return
 }
 
 // UpdateUser changeu the User with id
-func UpdateUser(id string, u User) (err error) {
-	svc.log.Printf("update: %+v\n", u)
-	return svc.db.Update(bolt.UserBucket, id, u)
+func UpdateUser(id string, u model.User) (err error) {
+	log.Info("update user")
+	defer log.V(2).Info("payload: %+v\n", u)
+
+	return svc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(userBucketKey)
+		return boltx.PutModel(b, []byte(id), &u)
+	})
 }
 
 // DeleteUser removeu s
-func DeleteUser(u User) error {
-	svc.log.Printf("delete: %+v\n", u)
-	return svc.db.Remove(bolt.UserBucket, u.ID)
+func DeleteUser(u model.User) error {
+	log.Info("delete user")
+	log.V(2).Info("payload: %+v\n", u)
+	return boltx.DeleteFromBucket(svc.db, userBucketKey, []byte(u.ID))
 }

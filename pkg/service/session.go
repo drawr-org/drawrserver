@@ -1,64 +1,97 @@
 package service
 
 import (
-	"encoding/json"
-	"log"
-
-	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/model"
 	"github.com/drawr-team/drawrserver/pkg/ulidgen"
+
+	"github.com/boltdb/bolt"
+	"github.com/simia-tech/boltx"
+
+	log "github.com/golang/glog"
 )
 
 // ListSessions returns all the sessions in the database
-func ListSessions() (sl []Session, err error) {
-	rawl, err := svc.db.List(bolt.SessionBucket)
-	if err != nil {
-		return
-	}
-	for _, b := range rawl {
-		var s Session
-		err = json.Unmarshal(b, &s)
-		sl = append(sl, s)
-	}
-	svc.log.Printf("list: %+v\n", sl)
+func ListSessions() (sl []model.Session, err error) {
+	log.Info("list sessions")
+
+	err = svc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(sessionBucketKey)
+		_, _, err := boltx.ForEach(b, &model.Session{}, func(k []byte, v interface{}) (boltx.Action, error) {
+			sl = append(sl, *v.(*model.Session))
+			return boltx.ActionContinue, nil
+		})
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		return nil
+	})
+	log.V(2).Infof("payload: %+v", sl)
 	return
 }
 
 // NewSession returns a new Session
-func NewSession(in *Session) (s Session, err error) {
+func NewSession(in *model.Session) (s model.Session, err error) {
+	log.Info("new session")
+
+	if in == nil {
+		log.Warning("deprecated api endpoint!")
+	}
 	if in != nil {
+		log.V(2).Infof("put payload: %+v", in)
 		s = *in
 	}
 	s.ID = ulidgen.Now().String()
-	err = svc.db.Put(bolt.SessionBucket, s.ID, s)
-	svc.log.Printf("new: %+v\n", s)
+
+	err = svc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(sessionBucketKey)
+		return boltx.PutModel(b, []byte(s.ID), &s)
+	})
+
+	log.V(2).Infof("payload: %+v", s)
 	return
 }
 
 // GetSession returns the Session with id
-func GetSession(id string) (s Session, err error) {
-	raw, err := svc.db.Get(bolt.SessionBucket, id)
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(raw, &s)
-	svc.log.Printf("get: %+v\n", s)
+func GetSession(id string) (s model.Session, err error) {
+	log.Info("get session")
+
+	err = svc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(sessionBucketKey)
+		ok, err := boltx.GetModel(b, []byte(id), &s)
+		if !ok {
+			err = ErrNotFound
+		}
+		return err
+	})
+
+	log.V(2).Infof("payload: %+v", s)
 	return
 }
 
 // UpdateSession changes the Session with id
-func UpdateSession(id string, s Session) (err error) {
-	svc.log.Printf("update: %+v\n", s)
-	return svc.db.Update(bolt.SessionBucket, id, s)
+func UpdateSession(id string, s model.Session) (err error) {
+	log.Info("update session")
+	defer log.V(2).Infof("payload: %+v", s)
+
+	return svc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(sessionBucketKey)
+		return boltx.PutModel(b, []byte(id), &s)
+	})
 }
 
 // DeleteSession removes s
-func DeleteSession(s Session) error {
-	svc.log.Printf("delete: %+v\n", s)
-	return svc.db.Remove(bolt.SessionBucket, s.ID)
+func DeleteSession(s model.Session) error {
+	log.Info("delete session")
+	log.V(2).Infof("payload: %+v", s)
+
+	return boltx.DeleteFromBucket(svc.db, sessionBucketKey, []byte(s.ID))
 }
 
 // Join connects to the websocket of s
-func Join(s Session) error {
-	log.Println("[session] Join Session logic not implemented yet!")
+func Join(s model.Session) error {
+	log.Info("join session")
+	log.Error("not implemented!")
+	log.V(2).Infof("payload: %+v", s)
 	return nil
 }

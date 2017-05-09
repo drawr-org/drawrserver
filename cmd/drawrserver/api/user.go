@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/pkg/model"
 	"github.com/drawr-team/drawrserver/pkg/service"
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/render"
@@ -13,7 +13,7 @@ import (
 const userIDParam string = "userID"
 
 type userResponse struct {
-	service.User
+	model.User
 	OmitID interface{} `json:"id,omitempty"`
 }
 
@@ -22,8 +22,6 @@ func (ur *userResponse) Bind(r *http.Request) error {
 }
 
 func userRouter() http.Handler {
-	service.Init(dbClient)
-
 	r := chi.NewRouter()
 	notAllowed := r.MethodNotAllowedHandler()
 
@@ -49,12 +47,12 @@ func notImplemented(w http.ResponseWriter, r *http.Request) {
 	render.PlainText(w, r, http.StatusText(http.StatusNotImplemented))
 }
 
-func withUserContext(r *http.Request, u service.User) *http.Request {
+func withUserContext(r *http.Request, u model.User) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), userCtxKey, u))
 }
 
-func fromUserContext(ctx context.Context) service.User {
-	return ctx.Value(userCtxKey).(service.User)
+func fromUserContext(ctx context.Context) model.User {
+	return ctx.Value(userCtxKey).(model.User)
 }
 
 func userCtx(next http.Handler) http.Handler {
@@ -63,7 +61,7 @@ func userCtx(next http.Handler) http.Handler {
 		u, err := service.GetUser(id)
 		if err != nil {
 			switch err {
-			case bolt.ErrNotFound:
+			case service.ErrNotFound:
 				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			default:
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -94,7 +92,7 @@ func userGet(w http.ResponseWriter, r *http.Request) {
 func userNew(w http.ResponseWriter, r *http.Request) {
 	u := fromUserContext(r.Context())
 	var data userResponse
-	if err := render.Bind(r, &data); err != nil {
+	if err := render.Bind(r.Body, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}
@@ -110,7 +108,7 @@ func userNew(w http.ResponseWriter, r *http.Request) {
 func userUpdate(w http.ResponseWriter, r *http.Request) {
 	u := fromUserContext(r.Context())
 	var data userResponse
-	if err := render.Bind(r, &data); err != nil {
+	if err := render.Bind(r.Body, &data); err != nil {
 		render.Status(r, http.StatusNotAcceptable)
 		render.JSON(w, r, err.Error())
 	}

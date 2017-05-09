@@ -9,7 +9,10 @@ The backend of the drawr service
 <details>
 <summary>/session</summary>
 
-- `/new` :: **GET** :: requests a new session
+- `/` :: **GET** :: list all sessions
+- `/` :: **PUT** :: create new session
+
+- `/new` :: **GET** :: requests a new session *deprecated*
 
 </details>
 
@@ -19,6 +22,7 @@ The backend of the drawr service
 - `/` :: **GET** :: returns session information
 - `/` :: **POST** :: updates session information
 - `/` :: **DELETE** :: delete a session from the database
+
 - `/ws` :: **GET** :: websocket of the session
 - `/leave` :: **GET** :: disconnect from websocket *deprecated*
 

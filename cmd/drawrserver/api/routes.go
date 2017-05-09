@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/pressly/chi"
-	"github.com/pressly/chi/middleware"
 	"github.com/pressly/chi/render"
+
+	log "github.com/golang/glog"
 )
 
 type ctxKey int
@@ -19,15 +20,10 @@ const (
 var ErrSettingUpRouter = errors.New("Error setting up router")
 
 // setupRoutes sets up the root router and calls the subroute methods
-func setupRoutes(opts *Options) (chi.Router, error) {
+func setupRoutes() (chi.Router, error) {
 	router := chi.NewRouter()
-	router.Use(allowAllOriginsMiddleware)
-	if opts.Verbose {
-		router.Use(verboseLoggerMiddleware)
-	}
-	if opts.Debug {
-		router.Use(middleware.Logger)
-	}
+	router.Use(originsMw)
+	router.Use(loggerMw)
 
 	router.Mount("/session", sessionRouter())
 	router.Mount("/stats", statRouter())
@@ -44,17 +40,19 @@ func setupRoutes(opts *Options) (chi.Router, error) {
 	return router, nil
 }
 
-// allowAllOriginsMiddleware allows connections from everywhere
-func allowAllOriginsMiddleware(next http.Handler) http.Handler {
+// originsMw allows connections from everywhere
+func originsMw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		next.ServeHTTP(w, r)
 	})
 }
 
-func verboseLoggerMiddleware(next http.Handler) http.Handler {
+func loggerMw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		apilog.Printf("[%v][%v] :: %v", r.Proto, r.Method, r.URL.Path)
+		if log.V(2) {
+			log.Infof("[%v][%v] :: %v", r.Proto, r.Method, r.URL.Path)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

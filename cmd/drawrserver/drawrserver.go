@@ -1,24 +1,25 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/drawr-team/drawrserver/pkg/api"
-	"github.com/drawr-team/drawrserver/pkg/bolt"
+	"github.com/drawr-team/drawrserver/cmd/drawrserver/api"
+
+	log "github.com/golang/glog"
 )
 
 var (
-	port         = flag.String("p", "3000", "port to run the server on")
-	dbTimeout    = flag.Int64("timeout", 1, "how long until giving up on database transaction in Seconds")
+	port         = flag.String("port", "3000", "port to run the server on")
 	dbPath       = flag.String("database", "data.db", "location of the database file")
-	verbose      = flag.Bool("verbose", false, "show log messages")
-	debug        = flag.Bool("debug", false, "show log messages")
 	printversion = flag.Bool("version", false, "print version number")
+	configFile   = flag.String("config", "config.toml", "path to the config file")
 )
 
 func init() {
@@ -30,26 +31,46 @@ func init() {
 }
 
 func main() {
-	server := new(http.Server)
-
-	// TODO make config loadable from JSON
-	if err := api.Configure(server, &api.Options{
-		Port:      *port,
-		RWTimeout: int64(5 * time.Second),
-		Database: &bolt.Options{
-			Path:    *dbPath,
-			Timeout: *dbTimeout * int64(time.Second),
-			Verbose: *verbose,
-		},
-		Verbose: *verbose,
-		Debug:   *debug,
-	}); err != nil {
-		log.Fatal("Unable to configure API")
+	config, err := loadConfig(*configFile)
+	if err != nil {
+		log.Error("Error loading configuration: ", err)
 	}
+	log.Info("Config loaded")
+	log.V(2).Infof("%+v", config)
 
-	go catchSignalAndCleanup(server) // handle ctrl-c, etc...
+	var server http.Server
+	server.Addr = fmt.Sprintf("%s:%d", config.Server.Host, config.Server.Port)
+	server.ReadTimeout = time.Duration(config.Server.RWTimeout) * time.Second
+	server.WriteTimeout = time.Duration(config.Server.RWTimeout) * time.Second
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal("ServerError:", err)
+	// init api pkg
+	handler, err := api.Init(config.Database.Path, config.Database.Timeout)
+	if err != nil {
+		log.Fatal("Error setting up API: ", err)
 	}
+	server.Handler = handler
+	log.Info("API initialized")
+
+	// register signals
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, syscall.SIGHUP)
+	signal.Notify(sigChan, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGINT)
+
+	// start server
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatal("Error serving content: ", err)
+		}
+	}()
+	log.Info("Server started at ", server.Addr)
+
+	// wait on signal channel
+	<-sigChan
+	log.Warning("Server shutting down")
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+	cancelFunc()
+	server.Shutdown(ctx)
+	log.Info("Server stopped")
 }
